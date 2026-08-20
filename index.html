@@ -1,0 +1,186 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Garir Dokan Pro - Automotive Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        background-color: #0a0a0b;
+        margin: 0;
+        overflow-x: hidden;
+      }
+
+      /* A4 Preview Styles */
+      .a4-page {
+        width: 210mm;
+        min-height: 297mm;
+        margin: 10px auto;
+        background: white;
+        box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        box-sizing: border-box;
+      }
+      @media print {
+        @page {
+          size: A4 portrait;
+          margin: 0mm;
+        }
+        
+        /* Hide all UI elements, buttons, nav, sidebar, controls */
+        nav, button, footer, .no-print, .print\:hidden {
+          display: none !important;
+        }
+
+        /* Use simple, bulletproof visibility-based hiding for all other elements */
+        body * {
+          visibility: hidden !important;
+        }
+
+        /* Restore visibility only for the print modal and its decsendants */
+        .print-modal-container, 
+        .print-modal-container * {
+          visibility: visible !important;
+        }
+
+        /* Anchor the print modal container perfectly to the top-left corner of the printed paper */
+        .print-modal-container {
+          display: block !important;
+          position: fixed !important;
+          left: 0 !important;
+          top: 0 !important;
+          width: 210mm !important;
+          height: 297mm !important;
+          max-height: 297mm !important;
+          min-height: 297mm !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          box-shadow: none !important;
+          border: none !important;
+          background: #ffffff !important;
+          background-color: #ffffff !important;
+          backdrop-filter: none !important;
+          z-index: 9999999 !important;
+          overflow: visible !important;
+        }
+
+        /* Completely reset scrolling, scales, paddings, margins, shadows for print ancestors */
+        .print-scroll-container,
+        .print-scale-reset,
+        .print-doc-preview-wrapper {
+          display: block !important;
+          position: relative !important;
+          width: 210mm !important;
+          height: 297mm !important;
+          min-height: 297mm !important;
+          max-height: 297mm !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          background: #ffffff !important;
+          background-color: #ffffff !important;
+          transform: none !important;
+          scale: none !important;
+          box-shadow: none !important;
+          border: none !important;
+          overflow: visible !important;
+        }
+
+        /* Style the actual A4 sheet to print perfectly on 1 standard page */
+        .a4-page {
+          display: block !important;
+          position: relative !important;
+          box-sizing: border-box !important;
+          width: 210mm !important;
+          height: 297mm !important;
+          min-height: 297mm !important;
+          max-height: 297mm !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          border: none !important;
+          box-shadow: none !important;
+          transform: none !important;
+          background: #ffffff !important;
+          background-color: #ffffff !important;
+          page-break-inside: avoid !important;
+          page-break-after: avoid !important;
+          page-break-before: avoid !important;
+          overflow: hidden !important;
+        }
+
+        html, body {
+          background-color: #ffffff !important;
+          background: #ffffff !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          width: 210mm !important;
+          height: 297mm !important;
+          overflow: visible !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+      }
+      
+      /* Smooth scrolling */
+      html {
+        scroll-behavior: smooth;
+      }
+
+      /* Hide scrollbar for Chrome, Safari and Opera */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #ef4444; /* red-500 */
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #b91c1c; /* red-700 */
+      }
+
+      /* Transitions */
+      .animate-in {
+        animation: fadeIn 0.5s ease-out;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .zoom-in {
+        animation: zoomIn 0.3s ease-out;
+      }
+      @keyframes zoomIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+      }
+    </style>
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom": "https://esm.sh/react-dom@^19.2.4",
+    "react-dom/client": "https://esm.sh/react-dom@^19.2.4/client",
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
+    "jspdf": "https://esm.sh/jspdf@^4.1.0",
+    "html2canvas": "https://esm.sh/html2canvas@^1.4.1",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.45.0",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
+  }
+}
+</script>
+  <link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
