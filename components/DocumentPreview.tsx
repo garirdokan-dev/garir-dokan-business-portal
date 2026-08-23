@@ -679,7 +679,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
 
           <HeaderBar marginBottom="0px" />
 
-          <div className="main-content px-[20mm] text-black pb-[30mm]" style={{ width: '100%', boxSizing: 'border-box', fontFamily: 'Poppins, sans-serif' }}>
+          <div className="main-content px-[20mm] text-black pb-[30mm]" style={{ width: '100%', boxSizing: 'border-box', fontFamily: '"Times New Roman", Times, Georgia, serif' }}>
             <div 
               style={{ 
                 fontWeight: 'bold', 
@@ -850,7 +850,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
             <div style={{ clear: 'both' }}></div>
           </div>
           <HeaderBar />
-          <div className="px-[15mm] pt-[5mm] text-black pb-[30mm]" style={{ width: '100%', display: 'block', minHeight: '220mm', boxSizing: 'border-box' }}>
+          <div className="px-[15mm] pt-[5mm] text-black pb-[30mm]" style={{ width: '100%', display: 'block', minHeight: '220mm', boxSizing: 'border-box', fontFamily: 'Poppins, sans-serif' }}>
             <div className="mb-4 relative text-black border-b border-black" style={{ width: '100%', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h1 className="m-0 text-[32px] font-normal text-black whitespace-nowrap" style={{ lineHeight: '1', fontFamily: 'Poppins, sans-serif' }}>INVOICE</h1>
               <div className="text-[11px] font-normal text-black uppercase whitespace-nowrap" style={{ fontFamily: 'Poppins, sans-serif' }}>CUSTOMER COPY</div>
