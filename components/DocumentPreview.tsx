@@ -1011,6 +1011,25 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
               </table>
               <div style={{ clear: 'both' }}></div>
             </div>
+
+            <div style={{ width: '100%', marginTop: '100px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <tbody>
+                  <tr>
+                    <td style={{ width: '50%', textAlign: 'left', verticalAlign: 'top' }}>
+                      <div style={{ width: '220px', textAlign: 'center', borderTop: '1px solid #000000', paddingTop: '8px' }}>
+                        <span style={{ fontSize: '15px', fontWeight: 'bold', color: 'black' }}>Received By</span>
+                      </div>
+                    </td>
+                    <td style={{ width: '50%', textAlign: 'right', verticalAlign: 'top' }}>
+                      <div style={{ width: '220px', display: 'inline-block', textAlign: 'center', borderTop: '1px solid #000000', paddingTop: '8px' }}>
+                        <span style={{ fontSize: '15px', fontWeight: 'bold', color: 'black' }}>Proprietor</span>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
           <Footer />
         </div>

@@ -184,7 +184,7 @@ const App: React.FC = () => {
         await fetchHeader();
         await fetchHero();
       } catch (err) {
-        console.error("Initialization failed:", err);
+        console.warn("Initialization failed (likely database down):", err);
       } finally {
         setIsLoading(false);
       }

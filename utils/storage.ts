@@ -23,7 +23,7 @@ export const loadDocuments = async (): Promise<BusinessDocument[]> => {
     if (error) throw error;
     return data ? data.map(item => item.data as BusinessDocument) : [];
   } catch (e) {
-    console.error('Failed to load documents:', e);
+    console.warn('Failed to load documents (falling back to empty):', e);
     return [];
   }
 };
@@ -72,7 +72,7 @@ export const loadAssets = async (): Promise<Asset[]> => {
     if (error) throw error;
     return data ? data.map(item => item.data as Asset) : [];
   } catch (e) {
-    console.error('Failed to load assets:', e);
+    console.warn('Failed to load assets:', e);
     return [];
   }
 };
@@ -228,7 +228,7 @@ export const loadAllHeaderSettings = async (): Promise<Record<DocumentType, Head
     // Merge with defaults in case new document types are added
     return { ...initial, ...(data.data as Record<DocumentType, HeaderSettings>) };
   } catch (e) {
-    console.error('Failed to load all header settings:', e);
+    console.warn('Failed to load all header settings:', e);
     const defaultHeader: HeaderSettings = {
       text: 'Importer & All kinds of Brand new & Reconditioned Vehicles Supplier',
       fontSize: 14,
