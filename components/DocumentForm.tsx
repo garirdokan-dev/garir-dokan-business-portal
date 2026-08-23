@@ -659,6 +659,24 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
                 )}
               </div>
             </div>
+
+            <div className="bg-white/[0.03] p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-white/5 backdrop-blur-xl">
+              <SectionHeader icon={AlignJustify} title="Signature Positioning" subtitle="Adjust vertical spacing above signatures" />
+              <div className="space-y-4">
+                <label className={labelClass}>
+                  Signature Margin Top: {formData.signatureMarginTop ?? (formData.type === DocumentType.CHALLAN ? 60 : 100)}px
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="300"
+                  step="5"
+                  value={formData.signatureMarginTop ?? (formData.type === DocumentType.CHALLAN ? 60 : 100)}
+                  onChange={(e) => setFormData({ ...formData, signatureMarginTop: parseInt(e.target.value) })}
+                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-700"
+                />
+              </div>
+            </div>
           </>
         )}
 

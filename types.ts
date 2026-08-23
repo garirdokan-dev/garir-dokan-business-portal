@@ -129,6 +129,7 @@ export interface BusinessDocument {
   notes?: string;
   bankDetails?: string;
   validUntil?: string;
+  signatureMarginTop?: number;
   createdAt: number;
   updatedAt?: number;
   hiddenFields?: string[];

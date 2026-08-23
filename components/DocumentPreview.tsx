@@ -507,7 +507,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
               </p>
             </div>
 
-            <div style={{ width: '100%', marginTop: '60px' }}>
+            <div style={{ width: '100%', marginTop: `${document.signatureMarginTop ?? 60}px` }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <tbody>
                   <tr>
@@ -851,7 +851,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
           </div>
           <HeaderBar />
           <div className="px-[15mm] pt-[5mm] text-black pb-[30mm]" style={{ width: '100%', display: 'block', minHeight: '220mm', boxSizing: 'border-box', fontFamily: 'Poppins, sans-serif' }}>
-            <div className="mb-4 relative text-black border-b border-black" style={{ width: '100%', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="mb-4 relative text-black border-y border-black" style={{ width: '100%', paddingTop: '10px', paddingBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h1 className="m-0 text-[32px] font-normal text-black whitespace-nowrap" style={{ lineHeight: '1', fontFamily: 'Poppins, sans-serif' }}>INVOICE</h1>
               <div className="text-[11px] font-normal text-black uppercase whitespace-nowrap" style={{ fontFamily: 'Poppins, sans-serif' }}>CUSTOMER COPY</div>
             </div>
@@ -913,9 +913,9 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
             <table className="w-full border-collapse text-black" style={{ tableLayout: 'fixed', width: '100%' }}>
               <thead>
                 <tr className="text-black">
-                  <th className="border-y-[1.5px] border-black py-2.5 pl-[20px] pr-1.5 text-left text-[14px] font-bold text-black bg-white border-x-0 uppercase" style={{ width: '45%' }}><div style={{ display: 'flex', alignItems: 'center' }}>DESCRIPTION</div></th>
-                  <th className="border-y-[1.5px] border-black py-2.5 px-1.5 text-left text-[14px] font-bold text-black bg-white border-x-0 uppercase" style={{ width: '35%' }}><div style={{ display: 'flex', alignItems: 'center' }}>PAYMENT DATE</div></th>
-                  <th className="border-y-[1.5px] border-black py-2.5 px-1.5 text-right text-[14px] font-bold text-black bg-white border-x-0 uppercase" style={{ width: '20%' }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>AMOUNT</div></th>
+                  <th className="border-y-[1.5px] border-black py-2.5 pl-[65px] pr-1.5 text-left text-[18px] font-bold text-black bg-white border-x-0 uppercase" style={{ width: '45%' }}><div style={{ display: 'flex', alignItems: 'center' }}>DESCRIPTION</div></th>
+                  <th className="border-y-[1.5px] border-black py-2.5 px-1.5 text-left text-[18px] font-bold text-black bg-white border-x-0 uppercase" style={{ width: '35%' }}><div style={{ display: 'flex', alignItems: 'center' }}>PAYMENT DATE</div></th>
+                  <th className="border-y-[1.5px] border-black py-2.5 px-1.5 text-right text-[18px] font-bold text-black bg-white border-x-0 uppercase" style={{ width: '20%' }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>AMOUNT</div></th>
                 </tr>
               </thead>
               <tbody>
@@ -980,8 +980,10 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
                       <tbody>
                         {payments?.map((p, index) => (
                           <tr key={p.id} style={{ borderBottom: index === payments.length - 1 ? 'none' : '1px solid #e5e7eb' }}>
-                            <td className="py-3 px-3 text-[13px] text-black" style={{ width: '63.6%', textAlign: 'left', verticalAlign: 'top' }}>
-                              {new Date(p.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
+                            <td className="py-3 px-1.5 text-[13px] text-black" style={{ width: '63.6%', textAlign: 'left', verticalAlign: 'top' }}>
+                              <div style={{ width: '145px', textAlign: 'center' }}>
+                                {new Date(p.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
+                              </div>
                             </td>
                             <td className="py-3 px-3 text-right text-black font-bold text-[13px]" style={{ width: '36.4%', textAlign: 'right', verticalAlign: 'top' }}>
                               <div className="text-black font-bold">{p.amount.toLocaleString()}/-</div>
@@ -1012,7 +1014,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
               <div style={{ clear: 'both' }}></div>
             </div>
 
-            <div style={{ width: '100%', marginTop: '100px' }}>
+            <div style={{ width: '100%', marginTop: `${document.signatureMarginTop ?? 100}px` }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <tbody>
                   <tr>
