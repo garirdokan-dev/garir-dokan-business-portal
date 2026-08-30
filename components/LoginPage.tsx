@@ -29,6 +29,13 @@ interface InteractiveParticle {
   color: string;
 }
 
+const PHRASES = [
+  "Welcome to Garir Dokan Imports...",
+  "Readying Custom Duty Ledger Profiles...",
+  "Validating Chassis Port Keys...",
+  "Supercar Documents Ready for Customs Terminal.",
+];
+
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -63,12 +70,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const loginCardRef = useRef<HTMLDivElement | null>(null);
 
   // Typing animation phrases with high-tech automotive wording
-  const phrases = [
-    "Welcome to Garir Dokan Imports...",
-    "Readying Custom Duty Ledger Profiles...",
-    "Validating Chassis Port Keys...",
-    "Supercar Documents Ready for Customs Terminal.",
-  ];
   const [displayedText, setDisplayedText] = useState('');
   const [phraseIdx, setPhraseIdx] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -95,7 +96,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   useEffect(() => {
     let timer: NodeJS.Timeout;
     const handleType = () => {
-      const currentPhrase = phrases[phraseIdx];
+      const currentPhrase = PHRASES[phraseIdx];
       if (!isDeleting) {
         setDisplayedText(currentPhrase.substring(0, displayedText.length + 1));
         setTypingSpeed(90);
@@ -110,7 +111,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
         if (displayedText === '') {
           setIsDeleting(false);
-          setPhraseIdx((prev) => (prev + 1) % phrases.length);
+          setPhraseIdx((prev) => (prev + 1) % PHRASES.length);
           setTypingSpeed(400);
         }
       }

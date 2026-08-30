@@ -6,13 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Garir Dokan Pro - Automotive Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {}
+        }
+      }
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
       body {
         font-family: 'Plus Jakarta Sans', sans-serif;
-        background-color: #0a0a0b;
         margin: 0;
         overflow-x: hidden;
       }
@@ -161,6 +168,103 @@
         from { opacity: 0; transform: scale(0.95); }
         to { opacity: 1; transform: scale(1); }
       }
+
+      /* Safely override specific tailwind utility classes for light mode */
+      html.light-mode body {
+        background-color: #f3f4f6 !important;
+        color: #111827 !important;
+      }
+
+      html.light-mode .text-white,
+      html.light-mode .text-gray-200 { color: #111827 !important; }
+      
+      /* Exempt buttons and specific elements that should stay white text */
+      html.light-mode .text-white-always,
+      html.light-mode .group:hover .group-hover-text-white-always {
+        color: #ffffff !important;
+      }
+      html.light-mode .group:hover .group-hover-text-red-100-always {
+        color: #fecaca !important;
+      }
+      html.light-mode .bg-red-700.text-white,
+      html.light-mode .bg-red-600.text-white,
+      html.light-mode .bg-green-600.text-white,
+      html.light-mode .bg-blue-500.text-white,
+      html.light-mode .bg-blue-600.text-white,
+      html.light-mode .bg-black.text-white,
+      html.light-mode .hover\:bg-red-700:hover,
+      html.light-mode .hover\:bg-red-600:hover,
+      html.light-mode .hover\:bg-blue-500:hover {
+        color: #ffffff !important;
+      }
+
+      /* Force dark mode for specific elements */
+      html.light-mode .force-dark,
+      html.light-mode .force-dark h1,
+      html.light-mode .force-dark h2,
+      html.light-mode .force-dark h3,
+      html.light-mode .force-dark p {
+        color: #ffffff !important;
+      }
+      
+      html.light-mode .force-dark .text-white,
+      html.light-mode .force-dark.text-white { color: #ffffff !important; }
+
+      html.light-mode .force-dark .text-gray-400,
+      html.light-mode .force-dark.text-gray-400 { color: #9ca3af !important; }
+
+      html.light-mode .force-dark .bg-white\/5,
+      html.light-mode .force-dark.bg-white\/5 { background-color: rgba(255, 255, 255, 0.05) !important; }
+
+      html.light-mode .force-dark .bg-white\/10,
+      html.light-mode .force-dark.bg-white\/10 { background-color: rgba(255, 255, 255, 0.1) !important; }
+
+      html.light-mode .force-dark .border-white\/10,
+      html.light-mode .force-dark.border-white\/10 { border-color: rgba(255, 255, 255, 0.1) !important; }
+      
+      html.light-mode .force-dark .hover\:bg-white\/20:hover,
+      html.light-mode .force-dark.hover\:bg-white\/20:hover { background-color: rgba(255, 255, 255, 0.2) !important; }
+
+      /* Adjust specific background utility classes used in the app */
+      html.light-mode .bg-\[\#0a0a0b\] { background-color: #f3f4f6 !important; }
+
+      html.light-mode .bg-white\/5 { background-color: rgba(0, 0, 0, 0.03) !important; }
+      html.light-mode .bg-white\/10 { background-color: rgba(0, 0, 0, 0.06) !important; }
+      html.light-mode .bg-white\/20 { background-color: rgba(0, 0, 0, 0.12) !important; }
+      html.light-mode .bg-white\/30 { background-color: rgba(0, 0, 0, 0.2) !important; }
+      html.light-mode .bg-white\/50 { background-color: rgba(0, 0, 0, 0.3) !important; }
+
+      html.light-mode .border-white\/5 { border-color: rgba(0, 0, 0, 0.05) !important; }
+      html.light-mode .border-white\/10 { border-color: rgba(0, 0, 0, 0.1) !important; }
+      html.light-mode .border-white\/20 { border-color: rgba(0, 0, 0, 0.2) !important; }
+
+      html.light-mode .bg-black\/5 { background-color: rgba(255, 255, 255, 0.4) !important; }
+      html.light-mode .bg-black\/10 { background-color: rgba(255, 255, 255, 0.5) !important; }
+      html.light-mode .bg-black\/20 { background-color: rgba(255, 255, 255, 0.7) !important; }
+      html.light-mode .bg-black\/30 { background-color: rgba(255, 255, 255, 0.8) !important; }
+      html.light-mode .bg-black\/40 { background-color: rgba(255, 255, 255, 0.85) !important; }
+      html.light-mode .bg-black\/50 { background-color: rgba(255, 255, 255, 0.9) !important; }
+      html.light-mode .bg-black\/60 { background-color: rgba(255, 255, 255, 0.95) !important; }
+      html.light-mode .bg-black\/80 { background-color: rgba(255, 255, 255, 0.98) !important; }
+      html.light-mode .bg-black\/90,
+      html.light-mode .bg-black\/95,
+      html.light-mode .bg-black\/98 { background-color: rgba(255, 255, 255, 1) !important; }
+
+      html.light-mode .text-white\/5 { color: rgba(0, 0, 0, 0.1) !important; }
+      html.light-mode .text-white\/10 { color: rgba(0, 0, 0, 0.2) !important; }
+      html.light-mode .text-white\/20 { color: rgba(0, 0, 0, 0.3) !important; }
+      html.light-mode .text-white\/30 { color: rgba(0, 0, 0, 0.4) !important; }
+      html.light-mode .text-white\/40 { color: rgba(0, 0, 0, 0.5) !important; }
+      html.light-mode .text-white\/50 { color: rgba(0, 0, 0, 0.6) !important; }
+      html.light-mode .text-white\/80 { color: rgba(0, 0, 0, 0.8) !important; }
+
+      /* Placeholder overrides for light mode */
+      html.light-mode .placeholder\:text-white\/20::placeholder { color: rgba(0, 0, 0, 0.4) !important; }
+      html.light-mode .placeholder\:text-red-300::placeholder { color: rgba(220, 38, 38, 0.6) !important; } /* red-600 */
+
+      html.light-mode .text-gray-400 { color: #4b5563 !important; }
+      html.light-mode .text-gray-500 { color: #6b7280 !important; }
+      html.light-mode .hover\:text-white:hover { color: #111827 !important; }
     </style>
     <script type="importmap">
 {

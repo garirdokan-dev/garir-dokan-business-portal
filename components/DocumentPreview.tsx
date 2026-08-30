@@ -19,7 +19,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
   const { 
     type, docNumber, date, clientName, clientAddress, clientPhone,
     clientDesignation, clientOffice, acName, logoUrl: docLogoUrl, logoSize: docLogoSize = 220, logoPosition: docLogoPosition = 0,
-    vehicleTitle, vehicleTitleSize = 16, vehicleTitleAlign = 'left', brand, model, yearModel, color, chassisNumber, engineNumber, auctionPoint, cc, fuel, transmission,
+    vehicleTitle, vehicleTitleSize = 16, vehicleTitleAlign = 'left', vehicleCategory = 'Reconditioned', brand, model, yearModel, color, chassisNumber, engineNumber, auctionPoint, cc, fuel, transmission,
     vehiclePrice, priceInWords, payments, quantity, notes, hiddenFields = [],
     advancedPaidAmount = 0, bankPaymentAmount = 0, bankName = "",
     productImageUrl, items = [], pageSettings
@@ -66,7 +66,9 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
   const commonA4Style: React.CSSProperties = {
     fontFamily: '"Times New Roman", Times, serif',
     width: dimensions.width,
-    minHeight: dimensions.height,
+    height: dimensions.height,
+    maxHeight: dimensions.height,
+    overflow: 'hidden',
     padding: '0',
     transform: scale !== 1 ? `scale(${scale})` : 'none',
     transformOrigin: 'top center',
@@ -249,43 +251,44 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
           </div>
           <HeaderBar />
           
-          <div className="main-content px-[15mm] text-black pb-[30mm]" style={{ width: '100%', display: 'block', minHeight: '220mm', boxSizing: 'border-box', fontFamily: 'Poppins, sans-serif' }}>
-            <div className="mb-6 border-b-[1.5px] border-black text-black pb-1" style={{ width: '100%', display: 'block', overflow: 'hidden' }}>
-              <div style={{ float: 'left' }}>
-                <h1 className="m-0 text-[32px] font-normal text-black uppercase whitespace-nowrap" style={{ lineHeight: '1', letterSpacing: '0', fontFamily: 'Poppins, sans-serif' }}>INVOICE</h1>
-              </div>
-              <div style={{ float: 'right', marginTop: '15px' }}>
-                <div className="text-[11px] font-normal text-black uppercase whitespace-nowrap" style={{ letterSpacing: '1px', fontFamily: 'Poppins, sans-serif' }}>CUSTOMER COPY</div>
-              </div>
-              <div style={{ clear: 'both' }}></div>
+          <div className="main-content px-[15mm] pt-[5mm] text-black pb-[30mm]" style={{ width: '100%', display: 'block', minHeight: '220mm', boxSizing: 'border-box', fontFamily: 'Poppins, sans-serif' }}>
+            <div className="mb-4 relative text-black border-y border-black" style={{ width: '100%', paddingTop: '10px', paddingBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h1 className="m-0 text-[32px] font-normal text-black whitespace-nowrap" style={{ lineHeight: '1', fontFamily: 'Poppins, sans-serif' }}>INVOICE</h1>
+              <div className="text-[11px] font-normal text-black uppercase whitespace-nowrap" style={{ fontFamily: 'Poppins, sans-serif' }}>CUSTOMER COPY</div>
             </div>
 
             <div className="mb-8" style={{ width: '100%', display: 'block' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', color: '#000000' }}>
                 <tbody>
                   <tr>
-                    <td style={{ width: '65%', verticalAlign: 'top', paddingRight: '20px' }}>
+                    <td style={{ width: '62%', verticalAlign: 'top', paddingRight: '20px' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', color: 'black' }}>
                         <tbody>
-                          <tr>
-                            <td style={{ width: '110px', fontWeight: 'bold', padding: '3px 0', verticalAlign: 'top' }}>Buyer's Name</td>
-                            <td style={{ width: '15px', padding: '3px 0', verticalAlign: 'top' }}>:</td>
-                            <td style={{ fontWeight: 'bold', textTransform: 'uppercase', padding: '3px 0', verticalAlign: 'top' }}>{clientName || '---'}</td>
-                          </tr>
-                          <tr>
-                            <td style={{ fontWeight: 'bold', padding: '3px 0', verticalAlign: 'top' }}>Phone</td>
-                            <td style={{ padding: '3px 0', verticalAlign: 'top' }}>:</td>
-                            <td style={{ padding: '3px 0', verticalAlign: 'top' }}>{clientPhone || '---'}</td>
-                          </tr>
-                          <tr>
-                            <td style={{ fontWeight: 'bold', padding: '3px 0', verticalAlign: 'top' }}>Address</td>
-                            <td style={{ padding: '3px 0', verticalAlign: 'top' }}>:</td>
-                            <td style={{ textTransform: 'capitalize', padding: '3px 0', verticalAlign: 'top', lineHeight: '1.3', whiteSpace: 'pre-wrap' }}>{clientAddress || '---'}</td>
-                          </tr>
+                          {!isHidden('clientName') && (
+                            <tr>
+                              <td style={{ width: '110px', fontWeight: 'bold', padding: '3px 0', verticalAlign: 'top' }}>Buyer's Name</td>
+                              <td style={{ width: '15px', padding: '3px 0', verticalAlign: 'top' }}>:</td>
+                              <td style={{ fontWeight: 'bold', textTransform: 'uppercase', padding: '3px 0', verticalAlign: 'top' }}>{clientName}</td>
+                            </tr>
+                          )}
+                          {!isHidden('clientPhone') && (
+                            <tr>
+                              <td style={{ fontWeight: 'bold', padding: '3px 0', verticalAlign: 'top' }}>Phone</td>
+                              <td style={{ padding: '3px 0', verticalAlign: 'top' }}>:</td>
+                              <td style={{ padding: '3px 0', verticalAlign: 'top' }}>{clientPhone}</td>
+                            </tr>
+                          )}
+                          {!isHidden('clientAddress') && (
+                            <tr>
+                              <td style={{ fontWeight: 'bold', padding: '3px 0', verticalAlign: 'top' }}>Address</td>
+                              <td style={{ padding: '3px 0', verticalAlign: 'top' }}>:</td>
+                              <td style={{ textTransform: 'capitalize', padding: '3px 0', verticalAlign: 'top', lineHeight: '1.3', whiteSpace: 'pre-wrap' }}>{clientAddress}</td>
+                            </tr>
+                          )}
                         </tbody>
                       </table>
                     </td>
-                    <td style={{ width: '35%', verticalAlign: 'top', textAlign: 'right' }}>
+                    <td style={{ width: '38%', verticalAlign: 'top', textAlign: 'right' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', color: 'black' }}>
                         <tbody>
                           <tr>
@@ -310,13 +313,13 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
 
             <table className="w-full border-collapse text-black" style={{ tableLayout: 'fixed', width: '100%' }}>
               <thead>
-                <tr className="bg-white border-y-[1.5px] border-black">
-                  <th className="p-2.5 text-center font-bold uppercase text-[12px] text-black" style={{ width: '10%', letterSpacing: '0' }}>SL NO</th>
-                  <th className="p-2.5 text-left font-bold uppercase text-[12px] text-black" style={{ width: showImageColumn ? '32%' : '48%', paddingLeft: '15px', letterSpacing: '0' }}>DESCRIPTION</th>
-                  {showImageColumn && <th className="p-2.5 text-center font-bold uppercase text-[12px] text-black" style={{ width: '16%', letterSpacing: '0' }}>IMAGE</th>}
-                  <th className="p-2.5 text-center font-bold uppercase text-[12px] text-black" style={{ width: '10%', letterSpacing: '0' }}>QTY</th>
-                  <th className="p-2.5 text-right font-bold uppercase text-[12px] text-black" style={{ width: '17%', paddingRight: '15px', letterSpacing: '0' }}>UNIT PRICE</th>
-                  <th className="p-2.5 text-right font-bold uppercase text-[12px] text-black" style={{ width: '17%', paddingRight: '15px', letterSpacing: '0' }}>TOTAL</th>
+                <tr className="bg-transparent border-y-[1.5px] border-black">
+                  <th className="p-2.5 text-center font-bold uppercase text-[16px] text-black" style={{ width: '10%', letterSpacing: '0' }}>SL NO</th>
+                  <th className="p-2.5 text-center leading-[24px] font-bold uppercase text-[16px] text-black" style={{ width: showImageColumn ? '32%' : '48%', paddingLeft: '15px', letterSpacing: '0' }}>DESCRIPTION</th>
+                  {showImageColumn && <th className="p-2.5 text-center font-bold uppercase text-[16px] text-black" style={{ width: '16%', letterSpacing: '0' }}>IMAGE</th>}
+                  <th className="p-2.5 text-right font-bold uppercase text-[16px] text-black" style={{ width: '10%', letterSpacing: '0' }}>QTY</th>
+                  <th className="p-2.5 text-right font-bold uppercase text-[16px] text-black" style={{ width: '17%', paddingRight: '15px', letterSpacing: '0' }}>UNIT PRICE</th>
+                  <th className="p-2.5 text-right font-bold uppercase text-[16px] text-black" style={{ width: '17%', paddingRight: '15px', letterSpacing: '0' }}>TOTAL</th>
                 </tr>
               </thead>
               <tbody>
@@ -370,6 +373,25 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
               </table>
               <div style={{ clear: 'both' }}></div>
             </div>
+
+            <div style={{ width: '100%', marginTop: `${document.signatureMarginTop ?? 100}px`, position: 'sticky', bottom: `calc(${f.bottomOffset ?? 10}mm + ${f.lineSpacing ?? 3}mm + 75px)`, backgroundColor: 'white', zIndex: 10 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <tbody>
+                  <tr>
+                    <td style={{ width: '50%', textAlign: 'left', verticalAlign: 'top' }}>
+                      <div style={{ width: '220px', textAlign: 'center', borderTop: '1px solid #000000', paddingTop: '8px' }}>
+                        <span style={{ fontSize: '15px', fontWeight: 'bold', color: 'black' }}>Received By</span>
+                      </div>
+                    </td>
+                    <td style={{ width: '50%', textAlign: 'right', verticalAlign: 'top' }}>
+                      <div style={{ width: '220px', display: 'inline-block', textAlign: 'center', borderTop: '1px solid #000000', paddingTop: '8px' }}>
+                        <span style={{ fontSize: '15px', fontWeight: 'bold', color: 'black' }}>Proprietor</span>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <Footer />
@@ -412,11 +434,17 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
                       <div style={{ color: '#4b5563', marginBottom: '2px' }}>Invoice No:</div>
                       <div style={{ fontWeight: 'bold', fontSize: '18px', color: '#000000', marginBottom: '15px' }}>#{docNumber}</div>
                       <div style={{ color: '#4b5563', marginBottom: '2px' }}>Date Issued:</div>
-                      <div style={{ fontWeight: 'bold', color: '#000000' }}>{new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+                      <div style={{ fontWeight: 'bold', color: '#000000', marginBottom: document.garageNumber ? '15px' : '0' }}>{new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+                      {document.garageNumber && (
+                        <>
+                          <div style={{ color: '#4b5563', marginBottom: '2px' }}>Garage Number:</div>
+                          <div style={{ fontWeight: 'bold', color: '#000000' }}>{document.garageNumber}</div>
+                        </>
+                      )}
                     </td>
                     <td style={{ width: '50%', verticalAlign: 'top', paddingLeft: '20px' }}>
-                      <div style={{ color: '#4b5563', marginBottom: '4px' }}>Issued to:</div>
-                      <div style={{ fontWeight: 'bold', textTransform: 'uppercase', color: '#000000', fontSize: '16px', marginBottom: '6px' }}>{clientName}</div>
+                      <div style={{ color: '#4b5563', marginBottom: '2px' }}>Issued to:</div>
+                      <div style={{ fontWeight: 'bold', textTransform: 'uppercase', color: '#000000', fontSize: '16px', marginBottom: '15px' }}>{clientName}</div>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                         <tbody>
                           <tr>
@@ -440,14 +468,14 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
             <table className="w-full border-collapse mb-8 border border-[#bcbec0] text-black" style={{ tableLayout: 'fixed', width: '100%' }}>
               <thead>
                 <tr className="bg-[#f1f2f2] text-black">
-                  <th style={{ border: '1px solid #bcbec0', padding: '10px', textAlign: 'center', fontWeight: 'bold', fontSize: '14px', width: '80px', textTransform: 'uppercase' }}>NO</th>
-                  <th style={{ border: '1px solid #bcbec0', padding: '10px 20px', textAlign: 'left', fontWeight: 'bold', fontSize: '14px', textTransform: 'uppercase' }}>DESCRIPTION</th>
-                  <th style={{ border: '1px solid #bcbec0', padding: '10px', textAlign: 'center', fontWeight: 'bold', fontSize: '14px', width: '120px', textTransform: 'uppercase' }}>QTY</th>
+                  <th style={{ border: '1px solid #bcbec0', padding: '10px', textAlign: 'center', fontWeight: 'bold', fontSize: '22px', lineHeight: '20px', width: '80px', textTransform: 'uppercase' }}>NO</th>
+                  <th style={{ border: '1px solid #bcbec0', padding: '10px 20px', textAlign: 'center', fontWeight: 'bold', fontSize: '22px', lineHeight: '20px', textTransform: 'uppercase' }}>DESCRIPTION</th>
+                  <th style={{ border: '1px solid #bcbec0', padding: '10px', textAlign: 'center', fontWeight: 'bold', fontSize: '22px', lineHeight: '20px', width: '120px', textTransform: 'uppercase' }}>QTY</th>
                 </tr>
               </thead>
               <tbody>
                 <tr style={{ minHeight: '350px' }}>
-                  <td style={{ border: '1px solid #bcbec0', padding: '15px', textAlign: 'center', verticalAlign: 'top' }}>1</td>
+                  <td style={{ border: '1px solid #bcbec0', padding: '15px', textAlign: 'center', verticalAlign: 'top', fontSize: '17px' }}>1</td>
                   <td style={{ border: '1px solid #bcbec0', padding: '20px', verticalAlign: 'top' }}>
                     <div 
                       style={{ 
@@ -465,36 +493,46 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
                     
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '15px', marginTop: '15px' }}>
                       <tbody>
-                        <tr>
-                          <td style={{ width: '160px', fontWeight: 'bold', padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>| COLOR</td>
-                          <td style={{ width: '20px', padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>:</td>
-                          <td style={{ padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>{color}</td>
-                        </tr>
-                        <tr>
-                          <td style={{ fontWeight: 'bold', padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>| MODEL</td>
-                          <td style={{ padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>:</td>
-                          <td style={{ padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>{yearModel}</td>
-                        </tr>
-                        <tr>
-                          <td style={{ fontWeight: 'bold', padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>| Engine No</td>
-                          <td style={{ padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>:</td>
-                          <td style={{ padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>{engineNumber}</td>
-                        </tr>
-                        <tr>
-                          <td style={{ fontWeight: 'bold', padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>| AUCTION POINT</td>
-                          <td style={{ padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>:</td>
-                          <td style={{ padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>{auctionPoint || '---'}</td>
-                        </tr>
-                        <tr>
-                          <td style={{ fontWeight: 'bold', padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>| Chassis No</td>
-                          <td style={{ padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>:</td>
-                          <td style={{ padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>{chassisNumber}</td>
-                        </tr>
+                        {!isHidden('color') && (
+                          <tr>
+                            <td style={{ width: '160px', fontWeight: 'bold', padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>| COLOR</td>
+                            <td style={{ width: '20px', padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>:</td>
+                            <td style={{ padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>{color}</td>
+                          </tr>
+                        )}
+                        {!isHidden('yearModel') && (
+                          <tr>
+                            <td style={{ width: '160px', fontWeight: 'bold', padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>| MODEL</td>
+                            <td style={{ width: '20px', padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>:</td>
+                            <td style={{ padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>{yearModel}</td>
+                          </tr>
+                        )}
+                        {!isHidden('engineNumber') && (
+                          <tr>
+                            <td style={{ width: '160px', fontWeight: 'bold', padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>| Engine No</td>
+                            <td style={{ width: '20px', padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>:</td>
+                            <td style={{ padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>{engineNumber}</td>
+                          </tr>
+                        )}
+                        {!isHidden('auctionPoint') && (
+                          <tr>
+                            <td style={{ width: '160px', fontWeight: 'bold', padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>| AUCTION POINT</td>
+                            <td style={{ width: '20px', padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>:</td>
+                            <td style={{ padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>{auctionPoint || '---'}</td>
+                          </tr>
+                        )}
+                        {!isHidden('chassisNumber') && (
+                          <tr>
+                            <td style={{ width: '160px', fontWeight: 'bold', padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>| Chassis No</td>
+                            <td style={{ width: '20px', padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>:</td>
+                            <td style={{ padding: '6px 0', borderBottom: '1px dashed #e5e7eb' }}>{chassisNumber}</td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </td>
                   <td style={{ border: '1px solid #bcbec0', padding: '15px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '18px' }}>
-                    {quantity < 10 ? `0${quantity}` : quantity}
+                    {!isHidden('quantity') && (quantity < 10 ? `0${quantity}` : quantity)}
                   </td>
                 </tr>
               </tbody>
@@ -507,7 +545,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
               </p>
             </div>
 
-            <div style={{ width: '100%', marginTop: `${document.signatureMarginTop ?? 60}px` }}>
+            <div style={{ width: '100%', marginTop: `${document.signatureMarginTop ?? 125}px`, position: 'sticky', bottom: `calc(${f.bottomOffset ?? 10}mm + ${f.lineSpacing ?? 3}mm + 75px)`, backgroundColor: 'white', zIndex: 10 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <tbody>
                   <tr>
@@ -556,25 +594,25 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
                 <div className="whitespace-pre-wrap text-black capitalize" style={{ display: 'block' }}>{clientAddress}</div>
               </div>
             </div>
-            <div className="font-bold mb-[30px] text-black" style={{ fontSize: `${vehicleTitleSize}px`, display: 'block' }}>Sub: Bill for {vehicleTitle}</div>
+            <div className="font-bold mb-[30px] text-black" style={{ fontSize: `${vehicleTitleSize}px`, display: 'block' }}>Sub: Bill for {vehicleCategory} {vehicleTitle}</div>
             
             <div className="relative text-black" style={{ width: '100%', display: 'block' }}>
               <table className="w-full border-collapse mb-[25px] border border-black relative z-[1] text-black" style={{ width: '100%' }}>
                 <thead>
-                  <tr className="bg-white h-[45px] text-black">
-                    <th className="border border-black p-2 text-center font-bold w-[55%] text-[17px] text-black bg-white uppercase">DESCRIPTION OF VEHICLE</th>
-                    <th className="border border-black p-2 text-center font-bold w-[15%] text-[17px] text-black bg-white uppercase">Unit</th>
-                    <th className="border border-black p-2 text-center font-bold w-[30%] text-[16px] text-black bg-white uppercase whitespace-nowrap">TOTAL AMOUNT (TK)</th>
+                  <tr className="bg-transparent h-[45px] text-black">
+                    <th className="border border-black p-2 text-center font-bold w-[55%] text-[17px] text-black bg-transparent uppercase">DESCRIPTION OF VEHICLE</th>
+                    <th className="border border-black p-2 text-center font-bold w-[15%] text-[17px] text-black bg-transparent uppercase">Unit</th>
+                    <th className="border border-black p-2 text-center font-bold w-[30%] text-[16px] text-black bg-transparent uppercase whitespace-nowrap">TOTAL AMOUNT (TK)</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr className="text-black">
-                    <td className="border-x border-black px-6 pt-6 pb-6 align-top text-black">
-                      <div className="specs-block text-[18px] text-black" style={{ width: '100%', display: 'block' }}>
+                    <td className="border-x border-black px-6 pt-6 pb-6 align-top text-black" style={{ lineHeight: '22px' }}>
+                      <div className="specs-block text-[20px] text-black" style={{ width: '100%', display: 'block' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', color: 'black' }}>
                           <tbody>
                             <tr>
-                              <td style={{ width: '140px', fontWeight: 'bold', padding: '2.5px 0', verticalAlign: 'top' }}>Vehicle</td>
+                              <td style={{ width: '120px', fontWeight: 'bold', padding: '2.5px 0', verticalAlign: 'top' }}>Vehicle</td>
                               <td style={{ width: '25px', padding: '2.5px 0', verticalAlign: 'top' }}>:</td>
                               <td style={{ fontWeight: 'bold', padding: '2.5px 0', verticalAlign: 'top' }}>{formattedPrice}/-</td>
                             </tr>
@@ -603,7 +641,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
                               <tr>
                                 <td style={{ padding: '2.5px 0', verticalAlign: 'top' }}>Chassis No</td>
                                 <td style={{ padding: '2.5px 0', verticalAlign: 'top' }}>:</td>
-                                <td style={{ padding: '2.5px 0', verticalAlign: 'top' }}>{chassisNumber}</td>
+                                <td style={{ padding: '2.5px 0', verticalAlign: 'top', fontSize: '20px' }}>{chassisNumber}</td>
                               </tr>
                             )}
                             {!isHidden('color') && (
@@ -623,24 +661,24 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
                     <td className="border-x border-black px-6 pt-6 text-right align-middle text-[20px] text-black font-bold"></td>
                   </tr>
                   <tr className="text-black h-[40px] border-t border-black">
-                    <td colSpan={2} className="border-r border-black px-6 text-left text-[16px] text-black align-middle">
+                    <td colSpan={2} className="border-r border-black px-6 text-left text-[18px] text-black align-middle">
                       Advance Paid By Customer
                     </td>
-                    <td className="px-6 text-right text-[17px] text-black align-middle font-bold">
+                    <td className="px-6 text-right text-[18px] text-black align-middle font-bold">
                       {advancedPaidAmount > 0 ? `${new Intl.NumberFormat('en-IN').format(advancedPaidAmount)}/-` : '-'}
                     </td>
                   </tr>
                   <tr className="text-black h-[40px] border-t border-black">
-                    <td colSpan={2} className="border-r border-black px-6 text-left text-[16px] text-black align-middle">
+                    <td colSpan={2} className="border-r border-black px-6 text-left text-[18px] text-black align-middle">
                       Paid by {bankName || 'Bank Name'}
                     </td>
-                    <td className="px-6 text-right text-[17px] text-black align-middle font-bold">
+                    <td className="px-6 text-right text-[18px] text-black align-middle font-bold">
                       {bankPaymentAmount > 0 ? `${new Intl.NumberFormat('en-IN').format(bankPaymentAmount)}/-` : '-'}
                     </td>
                   </tr>
                   <tr className="font-bold border-t border-black text-black h-[55px]">
-                    <td colSpan={2} className="border border-black px-6 text-left text-[18px] uppercase text-black align-middle">NET PRICE IN TAKA</td>
-                    <td className="border border-black px-6 text-right text-[20px] text-black align-middle">{formattedPrice}/-</td>
+                    <td colSpan={2} className="border border-black px-6 text-left text-[20px] uppercase text-black align-middle">NET PRICE IN TAKA</td>
+                    <td className="border border-black px-6 text-right text-[20px] text-black align-middle leading-[30px]">{formattedPrice}/-</td>
                   </tr>
                 </tbody>
               </table>
@@ -679,7 +717,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
 
           <HeaderBar marginBottom="0px" />
 
-          <div className="main-content px-[20mm] text-black pb-[30mm]" style={{ width: '100%', boxSizing: 'border-box', fontFamily: '"Times New Roman", Times, Georgia, serif' }}>
+          <div className="main-content px-[20mm] text-black pb-[30mm]" style={{ width: '100%', display: 'block', minHeight: '220mm', boxSizing: 'border-box', fontFamily: '"Times New Roman", Times, Georgia, serif' }}>
             <div 
               style={{ 
                 fontWeight: 'bold', 
@@ -729,7 +767,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
                 <tbody>
                   <tr className="text-black">
                     <td className="border border-black p-2 align-top text-black">
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '19px', color: 'black' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '18px', color: 'black' }}>
                         <tbody>
                           {!isHidden('brand') && (
                             <tr>
@@ -829,7 +867,9 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
         style={{ 
           fontFamily: '"Segoe UI", Arial, sans-serif',
           width: dimensions.width,
-          minHeight: dimensions.height,
+          height: dimensions.height,
+          maxHeight: dimensions.height,
+          overflow: 'hidden',
           padding: '0', 
           transform: scale !== 1 ? `scale(${scale})` : 'none',
           transformOrigin: 'top center',
@@ -1014,7 +1054,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
               <div style={{ clear: 'both' }}></div>
             </div>
 
-            <div style={{ width: '100%', marginTop: `${document.signatureMarginTop ?? 100}px` }}>
+            <div style={{ width: '100%', marginTop: `${document.signatureMarginTop ?? 100}px`, position: 'sticky', bottom: `calc(${f.bottomOffset ?? 10}mm + ${f.lineSpacing ?? 3}mm + 75px)`, backgroundColor: 'white', zIndex: 10 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <tbody>
                   <tr>

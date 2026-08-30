@@ -78,6 +78,7 @@ export interface HeaderSettings {
 
 export interface HeroSettings {
   selectedImages: string[];
+  customImages?: string[];
   transitionEffect: 'fade' | 'slide' | 'zoom';
   interval: number;
   backgroundPosition: string;
@@ -103,11 +104,13 @@ export interface BusinessDocument {
   clientOffice?: string;
   clientAddress: string;
   clientPhone?: string;
+  garageNumber?: string;
   acName?: string;
   vehicleTitle?: string;
   vehicleTitleSize?: number;
   // Added vehicleTitleAlign to fix type errors in components
   vehicleTitleAlign?: 'left' | 'center' | 'right' | 'justify';
+  vehicleCategory?: 'New' | 'Used' | 'Reconditioned';
   brand?: string;
   model?: string;
   yearModel?: string;

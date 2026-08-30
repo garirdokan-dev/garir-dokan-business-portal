@@ -12,6 +12,8 @@ interface DocumentFormProps {
   onCancel: () => void;
   onChange?: (doc: Partial<BusinessDocument>) => void;
   headerSettings?: HeaderSettings;
+  showPreviewToggle?: boolean;
+  onTogglePreview?: () => void;
 }
 
 const ONES_WORDS = [
@@ -74,8 +76,10 @@ const convertNumberToWords = (num: number): string => {
   return (words.trim() + " Taka Only").replace(/\s+/g, ' ');
 };
 
-const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCancel, onChange, headerSettings }) => {
+const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCancel, onChange, headerSettings, showPreviewToggle, onTogglePreview }) => {
   const [showAssetPicker, setShowAssetPicker] = useState<{ open: boolean; target: 'logoUrl' | 'productImageUrl'; type: AssetType } | null>(null);
+  const [isGarageDropdownOpen, setIsGarageDropdownOpen] = useState(false);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<BusinessDocument>>(() => ({
     id: Math.random().toString(36).substr(2, 9),
     type: DocumentType.INVOICE,
@@ -87,6 +91,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
     vehicleTitle: '',
     vehicleTitleSize: 18,
     vehicleTitleAlign: 'left',
+    vehicleCategory: 'Reconditioned',
     brand: '',
     model: '',
     yearModel: '',
@@ -221,10 +226,10 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
         </div>
       )}
 
-      <div className="bg-gradient-to-r from-red-950/20 to-black px-4 md:px-10 py-4 md:py-8 flex justify-between items-center text-white shrink-0 border-b border-white/5">
+      <div className="bg-black/20 px-4 md:px-10 py-4 md:py-8 flex justify-between items-center text-white shrink-0 border-b border-white/5">
         <div className="flex items-center gap-3 md:gap-6">
           <div className="w-10 h-10 md:w-14 md:h-14 bg-red-700 rounded-xl md:rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(185,28,28,0.4)] ring-4 ring-red-700/10 transition-all group-hover:rotate-12 shrink-0">
-            {React.cloneElement(currentTypeConfig.icon as React.ReactElement, { className: 'w-5 h-5 md:w-6 md:h-6' })}
+            {React.cloneElement(currentTypeConfig.icon as React.ReactElement, { className: 'w-5 h-5 md:w-6 md:h-6 text-white text-white-always' })}
           </div>
           <div className="min-w-0">
             <h2 className="text-base md:text-2xl font-black uppercase tracking-tighter leading-none mb-1 md:mb-1.5 truncate">
@@ -237,23 +242,34 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
             </div>
           </div>
         </div>
-        <button onClick={onCancel} className="w-10 h-10 md:w-12 md:h-12 bg-white/5 border border-white/10 rounded-full flex items-center justify-center hover:bg-red-700 hover:text-white hover:border-transparent transition-all active:scale-90 group shrink-0 ml-2">
-          <X className="w-5 h-5 md:w-6 md:h-6 text-gray-400 group-hover:text-white" />
-        </button>
+        <div className="flex items-center gap-2 md:gap-3 shrink-0 ml-2">
+          {showPreviewToggle && (
+            <button 
+              type="button"
+              onClick={onTogglePreview} 
+              className="lg:hidden flex items-center justify-center px-4 md:px-5 h-10 md:h-12 bg-white/5 border border-white/10 rounded-full text-[10px] md:text-[11px] font-black uppercase tracking-widest text-gray-300 hover:bg-white/10 hover:text-white transition-all active:scale-90"
+            >
+              Preview
+            </button>
+          )}
+          <button type="button" onClick={onCancel} className="w-10 h-10 md:w-12 md:h-12 bg-white/5 border border-white/10 rounded-full flex items-center justify-center hover:bg-red-700 hover:text-white hover:border-transparent transition-all active:scale-90 group">
+            <X className="w-5 h-5 md:w-6 md:h-6 text-gray-400 group-hover:text-white" />
+          </button>
+        </div>
       </div>
       
       <form onSubmit={handleSubmit} className="p-6 md:p-10 space-y-6 md:space-y-10 overflow-y-auto flex-1 scrollbar-hide bg-[radial-gradient(circle_at_top_left,rgba(185,28,28,0.03),transparent_40%)]">
         {/* Dynamic Form Sections Based on Type */}
         {formData.type === DocumentType.CHALLAN && (
           <>
-            <div className="bg-white/[0.03] p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-white/5 backdrop-blur-xl">
+            <div className={`bg-white/[0.03] p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-white/5 backdrop-blur-xl relative transition-all ${isGarageDropdownOpen ? 'z-50' : 'z-10'}`}>
               <SectionHeader icon={User} title="Recipient Logistics" subtitle="Delivery Destination Details" />
               <div className="space-y-4 md:space-y-6">
                 <div>
                   <label className={labelClass}>Recipient Full Name</label>
                   <input type="text" placeholder="Authorized Recipient" value={formData.clientName || ''} onChange={(e) => setFormData({...formData, clientName: e.target.value})} className={inputClass} />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                   <div>
                     <label className={labelClass}>Contact Mobile</label>
                     <input type="text" placeholder="+880..." value={formData.clientPhone || ''} onChange={(e) => setFormData({...formData, clientPhone: e.target.value})} className={inputClass} />
@@ -261,6 +277,49 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
                   <div>
                     <label className={labelClass}>Dispatch Date</label>
                     <input type="date" value={formData.date || ''} onChange={(e) => setFormData({...formData, date: e.target.value})} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Garage Number</label>
+                    <div className="relative">
+                      <div 
+                        className={`${inputClass} cursor-pointer flex justify-between items-center ${isGarageDropdownOpen ? 'rounded-b-none border-b-0 focus:ring-0' : ''}`}
+                        onClick={() => setIsGarageDropdownOpen(!isGarageDropdownOpen)}
+                      >
+                        <span className={formData.garageNumber ? 'text-white' : 'text-white/20'}>
+                          {formData.garageNumber || 'Select Garage Number'}
+                        </span>
+                        <svg className={`w-4 h-4 text-white/50 transition-transform ${isGarageDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                      </div>
+                      
+                      {isGarageDropdownOpen && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setIsGarageDropdownOpen(false)}></div>
+                          <div className="absolute top-full left-0 right-0 bg-[#0a0a0b] border border-white/10 border-t-0 rounded-b-2xl overflow-hidden z-50 shadow-2xl">
+                            <div 
+                              className="px-5 py-3 text-sm font-medium text-red-400/80 hover:text-red-400 hover:bg-white/5 cursor-pointer transition-colors border-b border-white/10"
+                              onClick={() => {
+                                setFormData({...formData, garageNumber: ''});
+                                setIsGarageDropdownOpen(false);
+                              }}
+                            >
+                              Clear Selection
+                            </div>
+                            {['ঢাকা - ৯৪৬/অ', 'ঢাকা - ৯৪৬/ম', 'ঢাকা - ৯৪৬/ও', 'ঢাকা - ৯৪৬/য়', 'ঢাকা - ৯৪৬/শ'].map((option) => (
+                              <div 
+                                key={option}
+                                className="px-5 py-4 text-sm font-medium text-white/80 hover:text-white hover:bg-white/5 cursor-pointer transition-colors"
+                                onClick={() => {
+                                  setFormData({...formData, garageNumber: option});
+                                  setIsGarageDropdownOpen(false);
+                                }}
+                              >
+                                {option}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div>
@@ -274,22 +333,24 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
               <SectionHeader icon={Car} title="Asset Specifications" subtitle="Vehicle Technical Data" />
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                <div className="flex items-center gap-4 bg-black/40 p-4 rounded-3xl border border-white/5">
-                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Text Size</span>
-                  <input 
-                    type="range" 
-                    min="10" 
-                    max="40" 
-                    value={formData.vehicleTitleSize ?? 18} 
-                    onChange={(e) => setFormData({...formData, vehicleTitleSize: parseInt(e.target.value)})} 
-                    className="flex-1 accent-red-700 h-1.5 bg-white/5 rounded-lg cursor-pointer appearance-none" 
-                  />
-                  <span className="text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">{formData.vehicleTitleSize ?? 18}px</span>
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4 bg-black/40 p-4 rounded-3xl border border-white/5">
+                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest shrink-0">Text Size</span>
+                  <div className="flex items-center gap-3 flex-1 min-w-[200px]">
+                    <input 
+                      type="range" 
+                      min="10" 
+                      max="40" 
+                      value={formData.vehicleTitleSize ?? 18} 
+                      onChange={(e) => setFormData({...formData, vehicleTitleSize: parseInt(e.target.value)})} 
+                      className="flex-1 accent-red-700 h-1.5 bg-white/5 rounded-lg cursor-pointer appearance-none" 
+                    />
+                    <span className="text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">{formData.vehicleTitleSize ?? 18}px</span>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2 bg-black/40 p-4 rounded-3xl border border-white/5">
-                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest mr-2">Alignment</span>
-                  <div className="flex bg-white/5 rounded-xl p-1 gap-1">
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4 bg-black/40 p-4 rounded-3xl border border-white/5">
+                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest shrink-0">Alignment</span>
+                  <div className="flex bg-white/5 rounded-xl p-1 gap-1 flex-1 min-w-[200px] justify-between sm:justify-start">
                     {(['left', 'center', 'right', 'justify'] as const).map((align) => (
                       <button
                         key={align}
@@ -318,24 +379,45 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 {['yearModel', 'color', 'chassisNumber', 'engineNumber', 'auctionPoint', 'quantity'].map(field => (
-                  <div key={field}>
-                    <label className={labelClass}>
-                      {field === 'auctionPoint' ? 'AUCTION POINT' : field === 'quantity' ? 'QTY' : field.toUpperCase()}
-                    </label>
-                    <input 
-                      type={field === 'quantity' ? 'number' : 'text'} 
-                      placeholder={field === 'auctionPoint' ? 'e.g. 4.5' : `Enter ${field}`} 
-                      value={(formData as any)[field] || ''} 
-                      onChange={(e) => {
-                        const val = field === 'quantity' ? parseInt(e.target.value) || 0 : e.target.value;
-                        setFormData({...formData, [field]: val});
-                      }} 
-                      className={inputClass} 
-                    />
+                  <div key={field} className="flex items-center gap-4 bg-black/20 p-2 rounded-2xl border border-white/5">
+                    <div className="flex-1">
+                      <label className={labelClass}>
+                        {field === 'auctionPoint' ? 'AUCTION POINT' : field === 'quantity' ? 'QTY' : field.toUpperCase()}
+                      </label>
+                      <input 
+                        type={field === 'quantity' ? 'number' : 'text'} 
+                        placeholder={field === 'auctionPoint' ? 'e.g. 4.5' : `Enter ${field}`} 
+                        value={(formData as any)[field] || ''} 
+                        onChange={(e) => {
+                          const val = field === 'quantity' ? parseInt(e.target.value) || 0 : e.target.value;
+                          setFormData({...formData, [field]: val});
+                        }} 
+                        className={inputClass} 
+                      />
+                    </div>
+                    <div className="pt-6 px-2"><ToggleSwitch checked={isFieldVisible(field)} onChange={() => toggleField(field)} /></div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            <div className="bg-white/[0.03] p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-white/5 backdrop-blur-xl">
+              <SectionHeader icon={AlignJustify} title="Signature Positioning" subtitle="Adjust vertical spacing above signatures" />
+              <div className="space-y-4">
+                <label className={labelClass}>
+                  Signature Margin Top: {formData.signatureMarginTop ?? 125}px
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="300"
+                  step="5"
+                  value={formData.signatureMarginTop ?? 125}
+                  onChange={(e) => setFormData({ ...formData, signatureMarginTop: parseInt(e.target.value) })}
+                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-700"
+                />
               </div>
             </div>
           </>
@@ -421,43 +503,85 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
               </div>
             </div>
 
-            <div className="bg-white/[0.03] p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-white/5 backdrop-blur-xl space-y-4 md:space-y-6">
+            <div className={`bg-white/[0.03] p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-white/5 backdrop-blur-xl space-y-4 md:space-y-6 relative transition-all ${isCategoryDropdownOpen ? 'z-50' : 'z-10'}`}>
               <SectionHeader icon={Car} title="Asset Valuation" subtitle="Vehicle Portfolio Details" />
               
               {formData.type === DocumentType.QUOTATION && (
                 <div className="grid grid-cols-1 gap-4 md:gap-6">
-                  <div className="flex items-center gap-4 bg-black/40 p-4 rounded-3xl border border-white/5">
-                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Header Typography</span>
-                    <input 
-                      type="range" 
-                      min="10" 
-                      max="40" 
-                      value={formData.vehicleTitleSize ?? 18} 
-                      onChange={(e) => setFormData({...formData, vehicleTitleSize: parseInt(e.target.value)})} 
-                      className="flex-1 accent-red-700 h-1.5 bg-white/5 rounded-lg cursor-pointer appearance-none" 
-                    />
-                    <span className="text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">{formData.vehicleTitleSize ?? 18}px</span>
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-4 bg-black/40 p-4 rounded-3xl border border-white/5">
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest shrink-0">Header Typography</span>
+                    <div className="flex items-center gap-3 flex-1 min-w-[200px]">
+                      <input 
+                        type="range" 
+                        min="10" 
+                        max="40" 
+                        value={formData.vehicleTitleSize ?? 18} 
+                        onChange={(e) => setFormData({...formData, vehicleTitleSize: parseInt(e.target.value)})} 
+                        className="flex-1 accent-red-700 h-1.5 bg-white/5 rounded-lg cursor-pointer appearance-none" 
+                      />
+                      <span className="text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">{formData.vehicleTitleSize ?? 18}px</span>
+                    </div>
                   </div>
                 </div>
               )}
 
               <div className="space-y-4 md:space-y-6">
-                <div>
-                  <label className={labelClass}>{formData.type === DocumentType.QUOTATION ? 'Vehicle Name' : 'Vehicle Description'}</label>
-                  <input 
-                    type="text" 
-                    placeholder={formData.type === DocumentType.QUOTATION ? "Enter vehicle name..." : "Full vehicle title"} 
-                    value={formData.vehicleTitle || ''} 
-                    onChange={(e) => setFormData({...formData, vehicleTitle: e.target.value})} 
-                    className={inputClass} 
-                  />
+                <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+                  {formData.type === DocumentType.BILL && (
+                    <div className="md:w-1/3">
+                      <label className={labelClass}>Vehicle Category</label>
+                      <div className="relative">
+                        <div 
+                          className={`${inputClass} cursor-pointer flex justify-between items-center ${isCategoryDropdownOpen ? 'rounded-b-none border-b-0 focus:ring-0' : ''}`}
+                          onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                        >
+                          <span className={formData.vehicleCategory ? 'text-white' : 'text-white/20'}>
+                            {formData.vehicleCategory || 'Select Category'}
+                          </span>
+                          <svg className={`w-4 h-4 text-white/50 transition-transform ${isCategoryDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+                        
+                        {isCategoryDropdownOpen && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setIsCategoryDropdownOpen(false)}></div>
+                            <div className="absolute top-full left-0 right-0 bg-[#0a0a0b] border border-white/10 border-t-0 rounded-b-2xl overflow-hidden z-50 shadow-2xl">
+                              {['New', 'Used', 'Reconditioned'].map((option) => (
+                                <div 
+                                  key={option}
+                                  className="px-5 py-4 text-sm font-medium text-white/80 hover:text-white hover:bg-white/5 cursor-pointer transition-colors"
+                                  onClick={() => {
+                                    setFormData({...formData, vehicleCategory: option as any});
+                                    setIsCategoryDropdownOpen(false);
+                                  }}
+                                >
+                                  {option}
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <div className={formData.type === DocumentType.BILL ? "md:w-2/3" : "w-full"}>
+                    <label className={labelClass}>{formData.type === DocumentType.QUOTATION ? 'Vehicle Name' : 'Vehicle Description'}</label>
+                    <input 
+                      type="text" 
+                      placeholder={formData.type === DocumentType.QUOTATION ? "Enter vehicle name..." : "Full vehicle title"} 
+                      value={formData.vehicleTitle || ''} 
+                      onChange={(e) => setFormData({...formData, vehicleTitle: e.target.value})} 
+                      className={inputClass} 
+                    />
+                  </div>
                 </div>
 
                 {formData.type !== DocumentType.QUOTATION && (
-                  <div className="flex items-center gap-4 md:gap-6 px-4 md:px-6 py-3 md:py-4 bg-black/40 rounded-3xl border border-white/5">
-                     <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Header Typography</span>
-                     <input type="range" min="10" max="40" value={formData.vehicleTitleSize ?? 18} onChange={(e) => setFormData({...formData, vehicleTitleSize: parseInt(e.target.value)})} className="flex-1 accent-red-700 h-1.5 bg-white/5 rounded-lg cursor-pointer appearance-none" />
-                     <span className="text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">{formData.vehicleTitleSize ?? 18}px</span>
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-4 bg-black/40 p-4 md:p-6 rounded-3xl border border-white/5">
+                     <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest shrink-0">Header Typography</span>
+                     <div className="flex items-center gap-3 flex-1 min-w-[200px]">
+                       <input type="range" min="10" max="40" value={formData.vehicleTitleSize ?? 18} onChange={(e) => setFormData({...formData, vehicleTitleSize: parseInt(e.target.value)})} className="flex-1 accent-red-700 h-1.5 bg-white/5 rounded-lg cursor-pointer appearance-none" />
+                       <span className="text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">{formData.vehicleTitleSize ?? 18}px</span>
+                     </div>
                   </div>
                 )}
 
@@ -660,23 +784,25 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
               </div>
             </div>
 
-            <div className="bg-white/[0.03] p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-white/5 backdrop-blur-xl">
-              <SectionHeader icon={AlignJustify} title="Signature Positioning" subtitle="Adjust vertical spacing above signatures" />
-              <div className="space-y-4">
-                <label className={labelClass}>
-                  Signature Margin Top: {formData.signatureMarginTop ?? (formData.type === DocumentType.CHALLAN ? 60 : 100)}px
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="300"
-                  step="5"
-                  value={formData.signatureMarginTop ?? (formData.type === DocumentType.CHALLAN ? 60 : 100)}
-                  onChange={(e) => setFormData({ ...formData, signatureMarginTop: parseInt(e.target.value) })}
-                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-700"
-                />
+            {formData.type === DocumentType.INVOICE && (
+              <div className="bg-white/[0.03] p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-white/5 backdrop-blur-xl">
+                <SectionHeader icon={AlignJustify} title="Signature Positioning" subtitle="Adjust vertical spacing above signatures" />
+                <div className="space-y-4">
+                  <label className={labelClass}>
+                    Signature Margin Top: {formData.signatureMarginTop ?? 100}px
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="300"
+                    step="5"
+                    value={formData.signatureMarginTop ?? 100}
+                    onChange={(e) => setFormData({ ...formData, signatureMarginTop: parseInt(e.target.value) })}
+                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-700"
+                  />
+                </div>
               </div>
-            </div>
+            )}
           </>
         )}
 
@@ -688,18 +814,19 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
         )}
       </form>
 
-      <div className="p-6 md:p-10 border-t border-white/5 bg-[#0a0a0b] shrink-0 flex flex-col sm:flex-row gap-4 md:gap-6 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
+      <div className="p-4 sm:p-6 md:p-10 border-t border-white/5 bg-[#0a0a0b] shrink-0 flex flex-row gap-3 md:gap-6 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
         <button 
           type="button" 
           onClick={handleSubmit} 
-          className="flex-1 bg-red-700 text-white font-black py-4 md:py-5 rounded-2xl md:rounded-[2rem] hover:bg-red-800 transition-all flex items-center justify-center gap-3 md:gap-4 active:scale-[0.98] shadow-2xl shadow-red-700/40 uppercase tracking-widest text-[10px] md:text-xs border border-red-600/50"
+          className="flex-1 bg-red-700 text-white font-black py-4 md:py-5 px-2 sm:px-6 rounded-2xl md:rounded-[2rem] hover:bg-red-800 transition-all flex items-center justify-center gap-2 md:gap-4 active:scale-[0.98] shadow-2xl shadow-red-700/40 uppercase tracking-widest text-[9px] sm:text-[10px] md:text-xs border border-red-600/50"
         >
-          <Save className="w-5 h-5 md:w-6 md:h-6" /> Commit Record to Storage
+          <Save className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 shrink-0" /> 
+          <span className="truncate">Commit Record<span className="hidden sm:inline"> to Storage</span></span>
         </button>
         <button 
           type="button" 
           onClick={onCancel} 
-          className="px-6 md:px-10 bg-white/5 text-gray-400 font-black py-4 md:py-5 rounded-2xl md:rounded-[2rem] border border-white/10 hover:bg-white/10 hover:text-white active:scale-95 transition-all uppercase tracking-widest text-[10px] md:text-xs"
+          className="px-4 sm:px-6 md:px-10 bg-white/5 text-gray-400 font-black py-4 md:py-5 rounded-2xl md:rounded-[2rem] border border-white/10 hover:bg-white/10 hover:text-white active:scale-95 transition-all uppercase tracking-widest text-[9px] sm:text-[10px] md:text-xs shrink-0"
         >
           Discard
         </button>

@@ -85,7 +85,7 @@ const AssetLibrary: React.FC<AssetLibraryProps> = ({ onClose, onSelect, selectio
       <div className="p-4 md:p-8 border-b border-white/5 flex justify-between items-center bg-black/20">
         <div className="flex items-center gap-3 md:gap-4">
           <div className="w-10 h-10 md:w-12 md:h-12 bg-red-700 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-red-700/20 shrink-0">
-            <Layers className="w-5 h-5 md:w-6 md:h-6 text-white" />
+            <Layers className="w-5 h-5 md:w-6 md:h-6 text-white text-white-always" />
           </div>
           <div className="min-w-0">
             <h2 className="text-base md:text-xl font-black uppercase italic tracking-tighter truncate">Asset Repository</h2>

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Search, 
   Plus, 
@@ -12,6 +13,10 @@ import {
   LayoutDashboard,
   ChevronRight,
   ArrowRight,
+  Car,
+  MapPin,
+  Sun,
+  Moon,
   Database,
   CircleDollarSign,
   Activity,
@@ -25,7 +30,9 @@ import {
   Menu,
   FileText,
   Image as ImageIcon,
-  LogOut
+  LogOut,
+  Edit3,
+  Minus
 } from 'lucide-react';
 import { BusinessDocument, DocumentType, FooterSettings, HeaderSettings, HeroSettings } from './types.ts';
 import { DOC_TYPES_CONFIG } from './constants.tsx';
@@ -51,6 +58,20 @@ const App: React.FC = () => {
     return sessionStorage.getItem('gd_auth') === 'true';
   });
 
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return localStorage.getItem('gd_theme') !== 'light'; // Default to dark if not set
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.remove('light-mode');
+      localStorage.setItem('gd_theme', 'dark');
+    } else {
+      document.documentElement.classList.add('light-mode');
+      localStorage.setItem('gd_theme', 'light');
+    }
+  }, [isDarkMode]);
+
   const handleLogout = () => {
     sessionStorage.removeItem('gd_auth');
     setIsAuthenticated(false);
@@ -60,6 +81,32 @@ const App: React.FC = () => {
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [documents, setDocuments] = useState<BusinessDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isLoading && loadingProgress < 100) {
+      interval = setInterval(() => {
+        setLoadingProgress((prev) => {
+          if (prev >= 70) return prev;
+          const increment = (70 - prev) * 0.1;
+          return prev + Math.max(increment, 1);
+        });
+      }, 150);
+    }
+    return () => clearInterval(interval);
+  }, [isLoading, loadingProgress]);
+
+  const startLoading = () => {
+    setLoadingProgress(0);
+    setIsLoading(true);
+  };
+
+  const finishLoading = () => {
+    setLoadingProgress(100);
+    setTimeout(() => setIsLoading(false), 500);
+  };
+
   const [editingDoc, setEditingDoc] = useState<Partial<BusinessDocument> | null>(null);
   const [previewingDoc, setPreviewingDoc] = useState<BusinessDocument | null>(null);
   const [draftDoc, setDraftDoc] = useState<Partial<BusinessDocument> | null>(null);
@@ -83,6 +130,105 @@ const App: React.FC = () => {
     backgroundPosition: '50% 50%',
     imagePositions: {}
   });
+
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const lastPathname = useRef(location.pathname);
+  const lastTargetPath = useRef('/');
+  const wasLoading = useRef(isLoading);
+
+  let currentTargetPath = '/';
+  if (editingDoc) {
+    if (editingDoc.id && editingDoc.docNumber) currentTargetPath = `/edit/${editingDoc.docNumber}`;
+    else if (editingDoc.id) currentTargetPath = `/edit/${editingDoc.id}`;
+    else currentTargetPath = `/create/${(editingDoc.type || '').toLowerCase().replace('_', '-')}`;
+  } else if (showProGenerator) {
+    currentTargetPath = `/create/pro-invoice`;
+  } else if (previewingDoc) {
+    currentTargetPath = `/preview/${previewingDoc.docNumber || previewingDoc.id}`;
+  } else if (showGlobalSettings) {
+    currentTargetPath = `/settings`;
+  } else if (viewMode === 'list') {
+    currentTargetPath = `/records`;
+  } else if (viewMode === 'assets') {
+    currentTargetPath = `/assets`;
+  }
+
+  useEffect(() => {
+    const path = location.pathname;
+    const pathChanged = path !== lastPathname.current;
+    const stateChanged = currentTargetPath !== lastTargetPath.current;
+    const finishedLoading = wasLoading.current && !isLoading;
+
+    if (pathChanged || finishedLoading) {
+      if (path === '/') {
+        setEditingDoc(null);
+        setShowProGenerator(false);
+        setPreviewingDoc(null);
+        setShowGlobalSettings(false);
+        setViewMode('landing');
+      } else if (path === '/records') {
+        setViewMode('list');
+        setEditingDoc(null);
+        setShowProGenerator(false);
+        setPreviewingDoc(null);
+        setShowGlobalSettings(false);
+      } else if (path === '/assets') {
+        setViewMode('assets');
+        setEditingDoc(null);
+        setShowProGenerator(false);
+        setPreviewingDoc(null);
+        setShowGlobalSettings(false);
+      } else if (path === '/settings') {
+        setShowGlobalSettings(true);
+      } else if (path.startsWith('/create/')) {
+        const typeStr = path.replace('/create/', '');
+        if (typeStr === 'pro-invoice') {
+          setShowProGenerator(true);
+          setEditingDoc(null);
+          setPreviewingDoc(null);
+        } else {
+          const docType = typeStr.replace('-', '_').toUpperCase() as DocumentType;
+          setEditingDoc({ type: docType });
+          setShowProGenerator(false);
+          setPreviewingDoc(null);
+        }
+      } else if (path.startsWith('/edit/')) {
+        if (!isLoading) {
+          const docIdentifier = path.replace('/edit/', '');
+          const doc = documents.find(d => d.docNumber === docIdentifier || d.id === docIdentifier);
+          if (doc) {
+            setEditingDoc(doc);
+            setShowProGenerator(false);
+            setPreviewingDoc(null);
+          }
+        }
+      } else if (path.startsWith('/preview/')) {
+        if (!isLoading) {
+          const docIdentifier = path.replace('/preview/', '');
+          const doc = documents.find(d => d.docNumber === docIdentifier || d.id === docIdentifier);
+          if (doc) {
+            setPreviewingDoc(doc);
+            setEditingDoc(null);
+            setShowProGenerator(false);
+          }
+        }
+      }
+      lastPathname.current = path;
+    }
+
+    if (stateChanged && !pathChanged && !isLoading) {
+      if (path !== currentTargetPath) {
+        navigate(currentTargetPath);
+        lastPathname.current = currentTargetPath;
+      }
+    }
+
+    lastTargetPath.current = currentTargetPath;
+    wasLoading.current = isLoading;
+  }, [location.pathname, currentTargetPath, isLoading, documents, navigate]);
+
   const previewRef = useRef<HTMLDivElement>(null);
   const [editorWidth, setEditorWidth] = useState(() => {
     const saved = localStorage.getItem('gd_editor_width');
@@ -94,6 +240,7 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('gd_preview_zoom');
     return saved ? parseFloat(saved) : 0.65;
   });
+  const [mobilePreviewMode, setMobilePreviewMode] = useState(false);
   const previewContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -114,9 +261,48 @@ const App: React.FC = () => {
       }
     };
 
+    let initialPinchDistance = 0;
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        initialPinchDistance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && initialPinchDistance > 0) {
+        e.preventDefault();
+        const currentDistance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const delta = currentDistance - initialPinchDistance;
+        setPreviewZoom(prev => {
+          const zoomStep = 0.005;
+          const next = prev + (delta * zoomStep);
+          const adjusted = Math.min(Math.max(next, 0.25), 2.5);
+          localStorage.setItem('gd_preview_zoom', adjusted.toFixed(3));
+          return adjusted;
+        });
+        initialPinchDistance = currentDistance;
+      }
+    };
+
+    const handleTouchEnd = () => {
+      initialPinchDistance = 0;
+    };
+
     container.addEventListener('wheel', handleWheel, { passive: false });
+    container.addEventListener('touchstart', handleTouchStart, { passive: false });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchend', handleTouchEnd);
     return () => {
       container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
     };
   }, [previewContainerRef.current, editingDoc?.id]);
   const isDragging = useRef(false);
@@ -176,7 +362,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const initData = async () => {
-      setIsLoading(true);
+      startLoading();
       try {
         const docs = await loadDocuments();
         setDocuments(docs || []);
@@ -186,7 +372,7 @@ const App: React.FC = () => {
       } catch (err) {
         console.warn("Initialization failed (likely database down):", err);
       } finally {
-        setIsLoading(false);
+        finishLoading();
       }
     };
     
@@ -195,7 +381,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const bannerInterval = setInterval(() => {
-      setCurrentBanner(prev => (prev + 1) % heroSettings.selectedImages.length);
+      if (heroSettings.selectedImages.length > 0) {
+        setCurrentBanner(prev => (prev + 1) % heroSettings.selectedImages.length);
+      }
     }, heroSettings.interval);
 
     return () => clearInterval(bannerInterval);
@@ -210,23 +398,32 @@ const App: React.FC = () => {
   }, []);
 
   const handleSave = async (doc: BusinessDocument) => {
-    setIsLoading(true);
+    const isDuplicate = documents.some(d => 
+      d.docNumber === doc.docNumber && d.id !== doc.id && doc.docNumber.trim() !== ''
+    );
+    
+    if (isDuplicate) {
+      alert(`Warning: A document with Document / ID "${doc.docNumber}" already exists. You cannot use this name. Please choose a different ID.`);
+      return;
+    }
+
+    startLoading();
     const updated = await addOrUpdateDocument(doc);
     setDocuments(updated);
     setEditingDoc(null);
     setDraftDoc(null);
     setShowProGenerator(false);
     setShowSaveToast(true);
-    setIsLoading(false);
+    finishLoading();
     setTimeout(() => setShowSaveToast(false), 3000);
   };
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this document?')) {
-      setIsLoading(true);
+      startLoading();
       const updated = await deleteDocument(id);
       setDocuments(updated);
-      setIsLoading(false);
+      finishLoading();
     }
   };
 
@@ -244,6 +441,12 @@ const App: React.FC = () => {
   
   const getCountByType = (type: DocumentType) => documents.filter(doc => doc.type === type).length;
 
+  useEffect(() => {
+    if (editingDoc) {
+      setMobilePreviewMode(false);
+    }
+  }, [editingDoc?.id, editingDoc?.type]);
+
   if (!isAuthenticated) {
     return <LoginPage onLoginSuccess={() => setIsAuthenticated(true)} />;
   }
@@ -253,9 +456,31 @@ const App: React.FC = () => {
       {/* Loading Overlay */}
       {isLoading && (
         <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center">
-          <div className="flex flex-col items-center gap-4">
-            <Loader2 className="w-12 h-12 text-red-700 animate-spin" />
-            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white">Syncing with Cloud</span>
+          <div className="flex flex-col items-center gap-6 w-full max-w-[340px] px-4">
+            <div className="relative w-full h-12">
+              {/* Road line */}
+              <div className="absolute left-4 right-4 bottom-0 h-[2px] bg-white/10 overflow-hidden rounded-full">
+                <div className="w-full h-full bg-gradient-to-r from-transparent via-red-700/50 to-transparent animate-[pulse_2s_ease-in-out_infinite]" />
+              </div>
+
+              {/* Destination */}
+              <div className="absolute right-0 bottom-[2px] text-red-700 z-10 flex flex-col items-center">
+                <MapPin className="w-8 h-8 animate-bounce drop-shadow-[0_0_10px_rgba(185,28,28,0.5)]" />
+              </div>
+              
+              {/* Driving Car */}
+              <div 
+                className="absolute z-20 text-white transition-all ease-out bottom-[2px]"
+                style={{ 
+                  left: `${loadingProgress}%`,
+                  transform: 'translateX(-50%)',
+                  transitionDuration: loadingProgress === 100 ? '500ms' : '150ms'
+                }}
+              >
+                <Car className="w-8 h-8 drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]" />
+              </div>
+            </div>
+            <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.4em] text-white whitespace-nowrap text-center">Car is on the way...</span>
           </div>
         </div>
       )}
@@ -270,7 +495,7 @@ const App: React.FC = () => {
 
       <nav className="fixed top-0 left-0 right-0 z-50 px-4 md:px-10 py-3 md:py-6 flex justify-between items-center backdrop-blur-md bg-black/20 border-b border-white/5 print:hidden no-print">
         <div className="flex items-center gap-2 md:gap-3 cursor-pointer" onClick={() => {setViewMode('landing'); setActiveType(null); setIsSidebarOpen(false);}}>
-          <div className="w-8 h-8 md:w-10 md:h-10 bg-red-700 rounded-lg md:rounded-xl flex items-center justify-center font-black text-base md:text-xl shadow-lg shadow-red-700/30">GD</div>
+          <div className="w-8 h-8 md:w-10 md:h-10 bg-red-700 rounded-lg md:rounded-xl flex items-center justify-center font-black text-base md:text-xl shadow-lg shadow-red-700/30 text-white text-white-always">GD</div>
           <span className="text-base md:text-xl font-black tracking-tighter">Garir Dokan <span className="text-red-700 uppercase">Pro</span></span>
         </div>
         
@@ -288,13 +513,20 @@ const App: React.FC = () => {
             <Settings className="w-5 h-5" />
           </button>
           <button 
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className="p-2 text-gray-400 hover:text-white transition-colors"
+            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </button>
+          <button 
             onClick={handleLogout}
             className="p-2 text-gray-400 hover:text-red-500 transition-colors"
             title="Log Out"
           >
             <LogOut className="w-5 h-5" />
           </button>
-          <button onClick={() => setViewMode('landing')} className="bg-red-700 px-6 py-2 rounded-xl font-bold text-sm shadow-lg shadow-red-700/20 hover:bg-red-800 transition-all active:scale-95">Dashboard</button>
+          <button onClick={() => setViewMode('landing')} className="bg-red-700 text-white text-white-always px-6 py-2 rounded-xl font-bold text-sm shadow-lg shadow-red-700/20 hover:bg-red-800 transition-all active:scale-95">Dashboard</button>
         </div>
 
         {/* Mobile Menu Toggle */}
@@ -336,6 +568,12 @@ const App: React.FC = () => {
             className="flex items-center gap-4 text-sm font-black uppercase tracking-widest text-gray-400 hover:text-white transition-colors"
           >
             <Settings className="w-5 h-5" /> Global Settings
+          </button>
+          <button 
+            onClick={() => {setIsDarkMode(!isDarkMode); setIsSidebarOpen(false);}} 
+            className="flex items-center gap-4 text-sm font-black uppercase tracking-widest text-gray-400 hover:text-white transition-colors"
+          >
+            {isDarkMode ? <><Sun className="w-5 h-5" /> Light Mode</> : <><Moon className="w-5 h-5" /> Dark Mode</>}
           </button>
           <button 
             onClick={() => {handleLogout(); setIsSidebarOpen(false);}} 
@@ -401,30 +639,39 @@ const App: React.FC = () => {
                   />
                 );
               })}
-              <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#0a0a0b] to-transparent"></div>
+              <div 
+                className="absolute left-0 right-0 z-20 pointer-events-none"
+                style={{
+                  bottom: '-2px',
+                  height: '120px',
+                  background: isDarkMode 
+                    ? 'linear-gradient(to top, #0a0a0b 0%, #0a0a0b 15%, rgba(10,10,11,0.8) 40%, rgba(10,10,11,0) 100%)' 
+                    : 'transparent'
+                }}
+              ></div>
             </div>
 
-            <div className="absolute left-0 right-0 md:left-[3%] top-[98%] lg:top-[60%] -translate-y-1/2 z-10 px-4 md:px-0">
-              <div className="backdrop-blur-xl bg-white/5 border border-white/10 p-6 md:p-12 rounded-[2rem] md:rounded-[3.5rem] w-full md:w-[580px] shadow-2xl relative overflow-hidden group scale-[0.85] lg:scale-100 origin-center md:origin-left transition-transform duration-500">
+            <div className="absolute left-0 right-0 lg:left-[3%] lg:right-auto top-[98%] lg:top-[60%] -translate-y-1/2 z-30 px-4 sm:px-0 flex justify-center lg:justify-start">
+              <div className={`force-dark backdrop-blur-xl border border-white/10 p-6 sm:p-10 lg:p-12 rounded-[2rem] sm:rounded-[3.5rem] w-full sm:w-[580px] shadow-2xl relative overflow-hidden group scale-[0.85] sm:scale-100 origin-center lg:origin-left transition-transform duration-500 ${!isDarkMode && !isLargeScreen ? 'bg-gray-900/90' : 'bg-white/5'}`}>
                 <div className="absolute -top-20 -left-20 w-40 h-40 bg-red-700/20 rounded-full blur-3xl group-hover:bg-red-700/40 transition-all"></div>
                 
-                <h1 className="text-3xl md:text-6xl font-black leading-[1.1] mb-6 tracking-tighter uppercase">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black leading-[1.1] mb-6 tracking-tighter uppercase">
                   Automotive <br/><span className="text-red-700 uppercase">Business</span> Manager
                 </h1>
                 
-                <div className="min-h-[3rem] md:min-h-[3.5rem] overflow-hidden relative border-l-4 border-red-700 pl-4 bg-white/5 rounded-r-lg flex items-center">
+                <div className="min-h-[3.5rem] sm:min-h-[4.5rem] overflow-hidden relative border-l-4 border-red-700 pl-4 bg-white/5 rounded-r-lg flex items-center">
                   <div className="transition-all duration-500 transform translate-y-0 flex flex-col w-full">
-                    <p className="text-[9px] md:text-[11px] font-bold text-red-100/80 uppercase tracking-[0.2em] py-2 leading-relaxed">
+                    <p className="text-[9px] sm:text-[10px] lg:text-xs font-bold text-red-100/80 uppercase tracking-[0.2em] py-2 leading-relaxed">
                       {RUNNING_TEXTS[currentTextIndex]}
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-6 md:mt-12 flex flex-col sm:flex-row gap-4">
-                  <button onClick={() => setViewMode('list')} className="w-full sm:w-auto bg-red-700 text-white px-8 md:px-10 py-4 md:py-5 rounded-2xl font-black flex items-center justify-center gap-3 shadow-2xl shadow-red-700/40 hover:bg-red-800 transition-all group/btn uppercase tracking-widest text-[10px] md:text-xs">
+                <div className="mt-6 sm:mt-10 lg:mt-12 flex flex-col sm:flex-row gap-4">
+                  <button onClick={() => setViewMode('list')} className="w-full sm:w-auto bg-red-700 text-white px-8 sm:px-10 py-4 sm:py-5 rounded-2xl font-black flex items-center justify-center gap-3 shadow-2xl shadow-red-700/40 hover:bg-red-800 transition-all group/btn uppercase tracking-widest text-[10px] sm:text-xs">
                     View Inventory <ArrowRight className="w-5 h-5 group-hover/btn:translate-x-2 transition-transform" />
                   </button>
-                  <button className="w-full sm:w-auto bg-white/10 text-white px-8 md:px-10 py-4 md:py-5 rounded-2xl font-black border border-white/10 hover:bg-white/20 transition-all uppercase tracking-widest text-[10px] md:text-xs">
+                  <button className="w-full sm:w-auto bg-white/10 text-white px-8 sm:px-10 py-4 sm:py-5 rounded-2xl font-black border border-white/10 hover:bg-white/20 transition-all uppercase tracking-widest text-[10px] sm:text-xs">
                     User Guide
                   </button>
                 </div>
@@ -434,7 +681,7 @@ const App: React.FC = () => {
           </section>
 
           {/* Core Services Section */}
-          <section className="px-4 md:px-20 pt-64 md:pt-80 lg:pt-32 pb-16 bg-[#0a0a0b] relative">
+          <section className="px-[50px] md:px-20 pt-64 md:pt-80 lg:pt-32 pb-16 bg-[#0a0a0b] relative">
             <div className="mb-12 md:mb-24 flex flex-col items-center text-center">
               <p className="text-red-600 font-black uppercase tracking-[0.5em] text-[9px] md:text-[10px] mb-4">Enterprise Edition</p>
               <h2 className="text-3xl md:text-6xl font-black mb-6 uppercase tracking-tighter">Premium <span className="text-red-700">Workspace</span></h2>
@@ -442,24 +689,24 @@ const App: React.FC = () => {
             </div>
 
             {/* Document Creation Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 md:gap-10 max-w-[1800px] mx-auto mb-16">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-[50px] md:gap-10 max-w-[1800px] mx-auto mb-16">
               {Object.entries(DOC_TYPES_CONFIG).map(([type, config]) => (
                 <div 
                   key={type}
-                  className="group relative bg-white rounded-[2.5rem] border border-gray-200/50 shadow-[0_15px_40px_-10px_rgba(0,0,0,0.05)] hover:shadow-[0_50px_100px_-20px_rgba(185,28,28,0.2)] hover:-translate-y-3 transition-all duration-700 overflow-hidden flex flex-col min-h-[360px]"
+                  className="group relative bg-white rounded-[2.5rem] border border-gray-200/50 shadow-[0_15px_40px_-10px_rgba(0,0,0,0.05)] hover:shadow-[0_50px_100px_-20px_rgba(185,28,28,0.2)] hover:-translate-y-3 transition-all duration-700 overflow-hidden flex flex-col min-h-[280px] sm:min-h-[360px]"
                 >
                   <div 
                     onClick={() => {
                       setViewMode('list');
                       setActiveType(type as DocumentType);
                     }}
-                    className="p-8 pb-6 flex-1 transition-all duration-700 group-hover:bg-[#8b0000] cursor-pointer flex flex-col"
+                    className="p-6 sm:p-8 pb-4 sm:pb-6 flex-1 transition-all duration-700 group-hover:bg-[#8b0000] cursor-pointer flex flex-col"
                   >
-                    <div className="w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-10 transition-all duration-700 bg-red-50 text-red-700 border border-red-100 shadow-sm group-hover:bg-white group-hover:text-red-800 group-hover:rotate-6 group-hover:scale-110">
-                      {React.cloneElement(config.icon as React.ReactElement<any>, { className: 'w-7 h-7' })}
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-[1.2rem] sm:rounded-[1.5rem] flex items-center justify-center mb-8 sm:mb-10 transition-all duration-700 bg-red-50 text-red-700 border border-red-100 shadow-sm group-hover:bg-white group-hover:text-red-800 group-hover:rotate-6 group-hover:scale-110">
+                      {React.cloneElement(config.icon as React.ReactElement<any>, { className: 'w-6 h-6 sm:w-7 sm:h-7' })}
                     </div>
-                    <h3 className="text-2xl font-black text-red-900 mb-4 uppercase tracking-tighter transition-all duration-700 group-hover:text-white group-hover:translate-x-1">{config.label}</h3>
-                    <p className="text-[13px] text-gray-500 font-bold leading-relaxed mb-6 group-hover:text-red-100 transition-colors duration-700">
+                    <h3 className="text-[1.1rem] sm:text-2xl font-black text-red-900 mb-3 sm:mb-4 uppercase tracking-tighter transition-all duration-700 group-hover:text-white group-hover:translate-x-1 whitespace-nowrap sm:whitespace-normal">{config.label}</h3>
+                    <p className="text-xs sm:text-[13px] text-gray-500 font-bold leading-relaxed mb-6 group-hover:text-red-100 group-hover-text-red-100-always transition-colors duration-700">
                       {type === DocumentType.INVOICE && "Professional vehicle sales records and automatic tracking."}
                       {type === DocumentType.QUOTATION && "Standard official quotes for individual or bank use."}
                       {type === DocumentType.BILL && "Record supplier transactions and operational costs."}
@@ -480,7 +727,7 @@ const App: React.FC = () => {
                     }}
                     className="mt-auto border-t border-gray-50 p-8 flex justify-between items-center bg-[#9d1414] border-transparent transition-all duration-700 cursor-pointer hover:!bg-[#b91c1c] group/bottom"
                   >
-                    <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white group-hover:translate-x-2 transition-all duration-700">NEW DOCUMENT</span>
+                    <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white text-white-always group-hover:translate-x-2 transition-all duration-700">NEW DOCUMENT</span>
                     <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-[#9d1414] shadow-sm transition-all duration-700 transform group-hover:rotate-[360deg] group-hover:scale-110">
                       <Plus className="w-6 h-6" />
                     </div>
@@ -492,41 +739,41 @@ const App: React.FC = () => {
             {/* HIGH-TECH BRIDGE STRIP */}
             <div className="max-w-[1800px] mx-auto px-4 md:px-10 mb-8 relative">
                <div className="h-px w-full bg-gradient-to-r from-transparent via-red-900/50 to-transparent mb-12"></div>
-               <div className="flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-10 px-6 md:px-10 py-8 bg-white/[0.03] border border-white/5 rounded-[2rem] backdrop-blur-md relative overflow-hidden group">
+               <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 lg:gap-10 px-6 md:px-10 py-8 bg-white/[0.03] border border-white/5 rounded-[2rem] backdrop-blur-md relative overflow-hidden group">
                   <div className="absolute inset-0 bg-gradient-to-r from-red-900/10 via-transparent to-red-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
                   
-                  <div className="flex items-center gap-6 relative z-10 w-full lg:w-auto">
+                  <div className="flex items-center gap-4 md:gap-6 relative z-10 w-full lg:w-auto">
                     <div className="w-12 h-12 rounded-xl bg-red-700/10 border border-red-700/20 flex items-center justify-center shrink-0">
                       <Zap className="w-6 h-6 text-red-700 animate-pulse" />
                     </div>
                     <div>
                       <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">System Throughput</p>
-                      <p className="text-sm font-bold text-white uppercase tracking-tighter">Real-time Performance Metrics</p>
+                      <p className="text-xs sm:text-sm font-bold text-white uppercase tracking-tighter">Real-time Performance Metrics</p>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-center lg:justify-start gap-6 md:gap-12 relative z-10">
-                    <div className="flex items-center gap-4">
-                      <div className="w-2 h-2 rounded-full bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.8)]"></div>
+                  <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center justify-center lg:justify-start gap-4 sm:gap-6 md:gap-12 relative z-10 w-full lg:w-auto">
+                    <div className="flex items-center gap-3 md:gap-4">
+                      <div className="w-2 h-2 rounded-full bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.8)] shrink-0"></div>
                       <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Database Ready</span>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]"></div>
+                    <div className="flex items-center gap-3 md:gap-4">
+                      <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)] shrink-0"></div>
                       <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Cloud Sync Active</span>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <Globe className="w-4 h-4 text-gray-600" />
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Global Region: AP-South</span>
+                    <div className="flex items-center gap-3 md:gap-4">
+                      <Globe className="w-4 h-4 text-gray-600 shrink-0" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 leading-tight">Global Region: AP-South</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 relative z-10 w-full lg:w-auto justify-center lg:justify-end">
-                    <div className="text-right">
+                  <div className="flex items-center justify-between sm:justify-start lg:justify-end w-full lg:w-auto relative z-10 pt-6 sm:pt-0 border-t border-white/5 sm:border-t-0 mt-2 sm:mt-0">
+                    <div className="text-left lg:text-right">
                       <p className="text-[9px] font-black text-gray-600 uppercase tracking-widest">Processor Load</p>
                       <p className="text-xs font-bold text-red-700">0.02ms latency</p>
                     </div>
-                    <div className="h-10 w-px bg-white/10 mx-2"></div>
-                    <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 group-hover:text-red-700 transition-colors">
+                    <div className="hidden sm:block h-10 w-px bg-white/10 mx-4"></div>
+                    <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 group-hover:text-red-700 transition-colors shrink-0">
                       <Cpu className="w-5 h-5" />
                     </div>
                   </div>
@@ -565,9 +812,9 @@ const App: React.FC = () => {
                     </p>
                   </div>
 
-                  <div className="mt-6 flex items-center gap-4 bg-black/40 px-6 md:px-8 py-3 rounded-full border border-white/5 backdrop-blur-3xl shadow-lg group/status hover:border-red-700/30 transition-all">
-                     <Activity className="w-4 h-4 md:w-5 md:h-5 text-red-700 animate-pulse" />
-                     <span className="text-[9px] md:text-[10px] font-black text-red-600 uppercase tracking-widest group-hover/status:text-white transition-colors">System Engine Status: 100% Optimal</span>
+                  <div className="mt-6 flex items-center gap-3 sm:gap-4 bg-black/40 px-4 sm:px-6 md:px-8 py-3 rounded-full border border-white/5 backdrop-blur-3xl shadow-lg group/status hover:border-red-700/30 transition-all max-w-full">
+                     <Activity className="w-4 h-4 md:w-5 md:h-5 text-red-700 animate-pulse shrink-0" />
+                     <span className="text-[7px] sm:text-[9px] md:text-[10px] font-black text-red-600 uppercase tracking-wider md:tracking-widest group-hover/status:text-white transition-colors whitespace-nowrap overflow-hidden text-ellipsis">System Engine Status: 100% Optimal</span>
                   </div>
                 </div>
 
@@ -579,11 +826,11 @@ const App: React.FC = () => {
                     </div>
                     <div className="relative z-10">
                       <div className="flex items-center gap-3 mb-4">
-                         <div className="h-2 w-2 rounded-full bg-red-700 animate-ping"></div>
-                         <p className="text-red-700 text-[10px] md:text-[11px] font-black uppercase tracking-[0.5em]">Inventory Audit</p>
+                         <div className="h-2 w-2 rounded-full bg-red-700 animate-ping shrink-0"></div>
+                         <p className="text-red-700 text-[8px] sm:text-[10px] md:text-[11px] font-black uppercase tracking-widest sm:tracking-[0.4em] md:tracking-[0.5em]">Inventory Audit</p>
                       </div>
-                      <h4 className="text-6xl md:text-8xl font-black tracking-tighter mb-6 group-hover:translate-x-2 transition-transform duration-700">
-                        {totalRecords.toString().padStart(2, '0')}<span className="text-2xl md:text-3xl text-gray-500 ml-3 md:ml-5 font-bold tracking-normal opacity-50">Total Files</span>
+                      <h4 className="text-5xl sm:text-6xl md:text-8xl font-black tracking-tighter mb-6 group-hover:translate-x-2 transition-transform duration-700">
+                        {totalRecords.toString().padStart(2, '0')}<span className="text-xl sm:text-2xl md:text-3xl text-gray-500 ml-3 md:ml-5 font-bold tracking-normal opacity-50">Total Files</span>
                       </h4>
                       <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden mb-4">
                         <div className="h-full bg-gradient-to-r from-red-900 to-red-600 animate-pulse" style={{width: '75%'}}></div>
@@ -598,11 +845,11 @@ const App: React.FC = () => {
                     </div>
                     <div className="relative z-10">
                       <div className="flex items-center gap-3 mb-4">
-                         <div className="h-2 w-2 rounded-full bg-red-700 animate-ping"></div>
-                         <p className="text-red-700 text-[10px] md:text-[11px] font-black uppercase tracking-[0.5em]">Liquidity Value</p>
+                         <div className="h-2 w-2 rounded-full bg-red-700 animate-ping shrink-0"></div>
+                         <p className="text-red-700 text-[8px] sm:text-[10px] md:text-[11px] font-black uppercase tracking-widest sm:tracking-[0.4em] md:tracking-[0.5em]">Liquidity Value</p>
                       </div>
-                      <div className="text-5xl md:text-8xl font-black tracking-tighter mb-6 group-hover:translate-x-2 transition-transform duration-700 flex items-baseline gap-2 md:gap-4">
-                        <span className="text-3xl md:text-5xl text-red-700">৳</span>{totalAssetValue.toLocaleString()}
+                      <div className="text-4xl sm:text-5xl md:text-8xl font-black tracking-tighter mb-6 group-hover:translate-x-2 transition-transform duration-700 flex items-baseline gap-2 md:gap-4 overflow-hidden">
+                        <span className="text-2xl sm:text-3xl md:text-5xl text-red-700">৳</span>{totalAssetValue.toLocaleString()}
                       </div>
                       <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden mb-4">
                         <div className="h-full bg-gradient-to-r from-red-900 to-red-600 animate-pulse" style={{width: '90%'}}></div>
@@ -613,21 +860,21 @@ const App: React.FC = () => {
                 </div>
 
                   {/* Categorical Breakdown Grid - Non-Italic Numbers */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mt-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-6 mt-4">
                     {Object.entries(DOC_TYPES_CONFIG).map(([type, config]) => {
                       const count = getCountByType(type as DocumentType);
                       return (
-                        <div key={type} className="bg-black/50 border border-white/10 p-8 rounded-[2.5rem] backdrop-blur-3xl hover:bg-red-950/40 hover:border-red-700/60 transition-all duration-700 group relative overflow-hidden shadow-2xl">
+                        <div key={type} className="bg-black/50 border border-white/10 p-5 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] backdrop-blur-3xl hover:bg-red-950/40 hover:border-red-700/60 transition-all duration-700 group relative overflow-hidden shadow-2xl">
                           <div className="absolute -bottom-6 -right-6 opacity-[0.03] group-hover:opacity-20 transition-all duration-700">
                             {React.cloneElement(config.icon as React.ReactElement<any>, { className: 'w-20 h-20' })}
                           </div>
-                          <div className="flex items-center gap-4 mb-4">
-                             <div className="p-2.5 bg-red-700/10 rounded-xl text-red-700 group-hover:bg-red-700 group-hover:text-white transition-all duration-500">
-                               {React.cloneElement(config.icon as React.ReactElement<any>, { className: 'w-4 h-4' })}
+                          <div className="flex items-center gap-2 sm:gap-4 mb-3 sm:mb-4">
+                             <div className="p-2 sm:p-2.5 bg-red-700/10 rounded-xl text-red-700 group-hover:bg-red-700 group-hover:text-white transition-all duration-500 shrink-0">
+                               {React.cloneElement(config.icon as React.ReactElement<any>, { className: 'w-3 h-3 sm:w-4 sm:h-4' })}
                              </div>
-                             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-500 group-hover:text-white transition-colors">{config.label}</span>
+                             <span className="text-[7px] sm:text-[9px] font-black uppercase tracking-wider sm:tracking-[0.2em] text-gray-500 group-hover:text-white transition-colors break-words leading-tight">{config.label}</span>
                           </div>
-                          <div className="text-4xl font-black tracking-tighter group-hover:scale-110 transition-transform origin-left text-white">
+                          <div className="text-3xl sm:text-4xl font-black tracking-tighter group-hover:scale-110 transition-transform origin-left text-white">
                             {count.toString().padStart(2, '0')}
                           </div>
                           <p className="text-[8px] font-black text-gray-700 uppercase mt-3 tracking-[0.3em] group-hover:text-red-700 transition-colors">Records Audit</p>
@@ -640,9 +887,9 @@ const App: React.FC = () => {
             </div>
           </section>
 
-          <footer className="px-6 md:px-20 py-16 md:py-24 border-t border-white/5 bg-[#080809] flex flex-col items-center">
+          <footer className="px-6 md:px-20 py-16 md:py-24 border-t border-white/5 bg-[#0a0a0b] flex flex-col items-center">
             <div className="flex flex-col md:flex-row items-center gap-4 mb-10">
-              <div className="w-12 h-12 bg-red-700 rounded-2xl flex items-center justify-center font-black text-2xl shadow-xl shadow-red-700/20">GD</div>
+              <div className="w-12 h-12 bg-red-700 rounded-2xl flex items-center justify-center font-black text-2xl shadow-xl shadow-red-700/20 text-white text-white-always">GD</div>
               <span className="text-2xl font-black tracking-tighter text-center md:text-left">Garir Dokan <span className="text-red-700 uppercase">Pro</span></span>
             </div>
             <p className="text-gray-600 text-[10px] md:text-[11px] font-black uppercase tracking-[0.3em] md:tracking-[0.5em] text-center max-w-2xl leading-loose">
@@ -785,7 +1032,7 @@ const App: React.FC = () => {
           <div className="bg-[#0a0a0b] w-full h-full border-white/10 shadow-2xl overflow-hidden flex flex-col lg:flex-row animate-in zoom-in duration-500">
             <div 
               style={isLargeScreen && editingDoc.type !== DocumentType.PRO_INVOICE ? { width: `${editorWidth}%`, flex: 'none' } : { flex: 1 }} 
-              className="overflow-hidden"
+              className={`overflow-hidden ${!isLargeScreen && mobilePreviewMode && editingDoc.type !== DocumentType.PRO_INVOICE ? 'hidden' : 'flex flex-col'}`}
             >
               {editingDoc.type === DocumentType.PRO_INVOICE ? (
                 <ProInvoiceGenerator 
@@ -799,9 +1046,11 @@ const App: React.FC = () => {
                 <DocumentForm 
                   initialData={editingDoc} 
                   onSave={handleSave} 
-                  onCancel={() => setEditingDoc(null)}
+                  onCancel={() => { setEditingDoc(null); setMobilePreviewMode(false); }}
                   onChange={setDraftDoc}
                   headerSettings={globalHeaders?.[editingDoc.type as DocumentType]}
+                  showPreviewToggle={true}
+                  onTogglePreview={() => setMobilePreviewMode(!mobilePreviewMode)}
                 />
               )}
             </div>
@@ -819,24 +1068,51 @@ const App: React.FC = () => {
               <div 
                 ref={previewContainerRef}
                 style={isLargeScreen ? { width: `${100 - editorWidth}%`, flex: 'none' } : {}}
-                className="hidden lg:flex bg-black/50 p-12 overflow-y-auto flex-col items-center scrollbar-hide border-l border-white/10"
+                className={`${isLargeScreen ? 'flex' : (mobilePreviewMode ? 'flex flex-1 w-full' : 'hidden')} bg-black/50 p-4 lg:p-12 overflow-y-auto flex-col items-center scrollbar-hide border-l border-white/10 relative`}
               >
-                <div className="mb-8 w-full flex justify-between items-center text-white/40">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.3em]">Live Rendering Engine</span>
-                    <span className="px-2 py-0.5 text-[9px] font-bold bg-white/10 rounded text-white font-mono">
-                      Zoom: {Math.round(previewZoom * 100)}%
-                    </span>
+                {!isLargeScreen && mobilePreviewMode && (
+                  <div className="w-full flex justify-end mb-4">
+                    <button 
+                      onClick={() => setMobilePreviewMode(false)}
+                      className="px-6 py-3 bg-white/5 border border-white/10 text-white rounded-full font-black uppercase tracking-widest text-xs hover:bg-white/10 transition-all shadow-lg flex items-center gap-2"
+                    >
+                      <Edit3 className="w-4 h-4" /> Back to Edit
+                    </button>
+                  </div>
+                )}
+                <div className="mb-6 md:mb-8 w-full flex flex-wrap justify-between items-center gap-4 text-white/30">
+                  <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-[200px]">
+                     <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-red-700 animate-pulse shrink-0"></div>
+                     <span className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] md:tracking-[0.4em] line-clamp-2 leading-tight">Live Rendering Engine</span>
+                     <span className="px-2 py-0.5 text-[8px] md:text-[9px] font-bold bg-white/10 rounded text-white font-mono shrink-0">
+                       Zoom: {Math.round(previewZoom * 100)}%
+                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-[11px]">
-                    <span className="text-gray-500 text-[10px]">Ctrl + Scroll to Zoom</span>
-                    <button 
-                      onClick={() => setPreviewZoom(0.65)} 
-                      className="px-2 py-0.5 bg-red-700/20 hover:bg-red-700 text-red-500 hover:text-white rounded border border-red-700/30 transition-all font-mono text-[10px]"
-                      title="Reset Zoom"
-                    >
-                      Reset
-                    </button>
+                    <span className="hidden md:inline text-gray-500 text-[10px] shrink-0">Ctrl + Scroll to Zoom</span>
+                    <div className="flex items-center gap-1 bg-red-700/10 p-1 rounded-lg border border-red-700/20">
+                      <button 
+                        onClick={() => setPreviewZoom(p => { const v = Math.max(0.25, p - 0.1); localStorage.setItem('gd_preview_zoom', v.toFixed(3)); return v; })} 
+                        className="w-6 h-6 flex items-center justify-center text-red-500 hover:bg-red-700 hover:text-white rounded transition-all"
+                        title="Zoom Out"
+                      >
+                        <Minus size={12} />
+                      </button>
+                      <button 
+                        onClick={() => { setPreviewZoom(0.65); localStorage.setItem('gd_preview_zoom', '0.65'); }} 
+                        className="px-2 h-6 text-red-500 hover:bg-red-700 hover:text-white rounded transition-all font-mono text-[10px] font-bold"
+                        title="Reset Zoom"
+                      >
+                        Reset
+                      </button>
+                      <button 
+                        onClick={() => setPreviewZoom(p => { const v = Math.min(2.5, p + 0.1); localStorage.setItem('gd_preview_zoom', v.toFixed(3)); return v; })} 
+                        className="w-6 h-6 flex items-center justify-center text-red-500 hover:bg-red-700 hover:text-white rounded transition-all"
+                        title="Zoom In"
+                      >
+                        <Plus size={12} />
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div className="transition-transform duration-300 ease-out origin-top">

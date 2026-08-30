@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, X, Upload, Download, Image as ImageIcon, Layers, User, Calendar, CreditCard, ShoppingBag, Plus, Trash2, Database, Eye, EyeOff, AlignLeft, AlignCenter, AlignRight, AlignJustify } from 'lucide-react';
+import { Save, X, Upload, Download, Image as ImageIcon, Layers, User, Calendar, CreditCard, ShoppingBag, Plus, Trash2, Database, Eye, EyeOff, AlignLeft, AlignCenter, AlignRight, AlignJustify, Edit3, Minus } from 'lucide-react';
 import { BusinessDocument, DocumentType, Asset, AssetType, InvoiceItem, FooterSettings, HeaderSettings } from '../types';
 import DocumentPreview from './DocumentPreview';
 import AssetLibrary from './AssetLibrary';
@@ -53,6 +53,7 @@ const ProInvoiceGenerator: React.FC<ProInvoiceGeneratorProps> = ({ initialData, 
     return saved ? parseFloat(saved) : 55; // 55% left, 45% right
   });
   const [isLargeScreen, setIsLargeScreen] = useState(false);
+  const [mobilePreviewMode, setMobilePreviewMode] = useState(false);
   const isDragging = useRef(false);
   
   const [previewZoom, setPreviewZoom] = useState(() => {
@@ -79,9 +80,48 @@ const ProInvoiceGenerator: React.FC<ProInvoiceGeneratorProps> = ({ initialData, 
       }
     };
 
+    let initialPinchDistance = 0;
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        initialPinchDistance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && initialPinchDistance > 0) {
+        e.preventDefault();
+        const currentDistance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const delta = currentDistance - initialPinchDistance;
+        setPreviewZoom(prev => {
+          const zoomStep = 0.005;
+          const next = prev + (delta * zoomStep);
+          const adjusted = Math.min(Math.max(next, 0.25), 2.5);
+          localStorage.setItem('gd_preview_zoom', adjusted.toFixed(3));
+          return adjusted;
+        });
+        initialPinchDistance = currentDistance;
+      }
+    };
+
+    const handleTouchEnd = () => {
+      initialPinchDistance = 0;
+    };
+
     container.addEventListener('wheel', handleWheel, { passive: false });
+    container.addEventListener('touchstart', handleTouchStart, { passive: false });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchend', handleTouchEnd);
     return () => {
       container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
     };
   }, [previewContainerRef.current, initialData?.id]);
 
@@ -228,27 +268,36 @@ const ProInvoiceGenerator: React.FC<ProInvoiceGeneratorProps> = ({ initialData, 
         {/* LEFT: Premium Editor Panel */}
         <div 
           style={isLargeScreen ? { width: `${editorWidth}%`, flex: 'none' } : { flex: 1 }}
-          className="bg-[#0a0a0b] border-r border-white/5 flex flex-col shrink-0 lg:min-w-[300px] overflow-hidden"
+          className={`bg-[#0a0a0b] border-r border-white/5 flex flex-col shrink-0 lg:min-w-[300px] overflow-hidden ${!isLargeScreen && mobilePreviewMode ? 'hidden' : 'flex'}`}
         >
-          <div className="bg-gradient-to-r from-red-950/20 to-black px-6 md:px-10 py-6 md:py-8 flex justify-between items-center text-white shrink-0 border-b border-white/5">
-            <div className="flex items-center gap-4 md:gap-6">
-              <div className="w-10 h-10 md:w-14 md:h-14 bg-red-700 rounded-xl md:rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(185,28,28,0.4)] ring-4 ring-red-700/10 transition-all group-hover:rotate-12">
-                <ShoppingBag className="w-5 h-5 md:w-6 md:h-6" />
+          <div className="bg-black/20 px-6 md:px-10 py-6 md:py-8 flex justify-between items-center text-white shrink-0 border-b border-white/5">
+            <div className="flex items-center gap-3 md:gap-6">
+              <div className="w-10 h-10 md:w-14 md:h-14 bg-red-700 rounded-xl md:rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(185,28,28,0.4)] ring-4 ring-red-700/10 transition-all group-hover:rotate-12 shrink-0">
+                <ShoppingBag className="w-5 h-5 md:w-6 md:h-6 text-white text-white-always" />
               </div>
-              <div>
-                <h2 className="text-lg md:text-2xl font-black uppercase tracking-tighter leading-none mb-1 md:mb-1.5">
+              <div className="min-w-0">
+                <h2 className="text-base md:text-2xl font-black uppercase tracking-tighter leading-none mb-1 md:mb-1.5 truncate">
                   {initialData?.id ? 'MODIFY' : 'DRAFTING'} <span className="text-red-700">PRODUCT INVOICE</span>
                 </h2>
                 <div className="flex items-center gap-2 md:gap-3">
-                  <span className="text-[8px] md:text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] md:tracking-[0.3em]">Session ID: {formData.id?.slice(0,8).toUpperCase()}</span>
-                  <div className="w-1 h-1 rounded-full bg-red-700 animate-pulse"></div>
-                  <span className="text-[8px] md:text-[9px] font-black text-red-700 uppercase tracking-[0.2em] md:tracking-[0.3em]">Live Cloud Buffer</span>
+                  <span className="text-[7px] md:text-[9px] font-black text-gray-500 uppercase tracking-[0.1em] md:tracking-[0.3em] truncate">ID: {formData.id?.slice(0,8).toUpperCase()}</span>
+                  <div className="w-1 h-1 rounded-full bg-red-700 animate-pulse shrink-0"></div>
+                  <span className="text-[7px] md:text-[9px] font-black text-red-700 uppercase tracking-[0.1em] md:tracking-[0.3em] truncate">Live Cloud Buffer</span>
                 </div>
               </div>
             </div>
-            <button onClick={onCancel} className="w-10 h-10 md:w-12 md:h-12 bg-white/5 border border-white/10 rounded-full flex items-center justify-center hover:bg-red-700 hover:text-white hover:border-transparent transition-all active:scale-90 group">
-              <X className="w-5 h-5 md:w-6 md:h-6 text-gray-400 group-hover:text-white" />
-            </button>
+            <div className="flex items-center gap-2 md:gap-3 shrink-0 ml-2">
+              <button 
+                type="button"
+                onClick={() => setMobilePreviewMode(!mobilePreviewMode)} 
+                className="lg:hidden flex items-center justify-center px-4 md:px-5 h-10 md:h-12 bg-white/5 border border-white/10 rounded-full text-[10px] md:text-[11px] font-black uppercase tracking-widest text-gray-300 hover:bg-white/10 hover:text-white transition-all active:scale-90"
+              >
+                Preview
+              </button>
+              <button onClick={onCancel} className="w-10 h-10 md:w-12 md:h-12 bg-white/5 border border-white/10 rounded-full flex items-center justify-center hover:bg-red-700 hover:text-white hover:border-transparent transition-all active:scale-90 group">
+                <X className="w-5 h-5 md:w-6 md:h-6 text-gray-400 group-hover:text-white" />
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 md:space-y-10 scrollbar-hide bg-[radial-gradient(circle_at_top_left,rgba(185,28,28,0.03),transparent_40%)]">
@@ -390,13 +439,33 @@ const ProInvoiceGenerator: React.FC<ProInvoiceGeneratorProps> = ({ initialData, 
                 </div>
               </div>
             </div>
+
+            {/* Signature Positioning */}
+            <div className="bg-white/[0.03] p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-white/5 backdrop-blur-xl">
+              <SectionHeader icon={AlignJustify} title="Signature Positioning" subtitle="Adjust vertical spacing above signatures" />
+              <div className="space-y-4">
+                <label className={labelClass}>
+                  Signature Margin Top: {formData.signatureMarginTop ?? 100}px
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="300"
+                  step="5"
+                  value={formData.signatureMarginTop ?? 100}
+                  onChange={(e) => setFormData({ ...formData, signatureMarginTop: parseInt(e.target.value) })}
+                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-700"
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="p-6 md:p-10 border-t border-white/5 bg-[#0a0a0b] shrink-0 flex flex-col sm:flex-row gap-4 md:gap-6 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
-            <button onClick={handleSave} className="flex-1 bg-red-700 text-white font-black py-4 md:py-5 rounded-2xl md:rounded-[2.5rem] hover:bg-red-800 flex items-center justify-center gap-3 md:gap-4 transition-all active:scale-95 shadow-2xl shadow-red-700/40 uppercase tracking-[0.2em] md:tracking-[0.3em] text-[10px] md:text-xs border border-red-600/50">
-              <Save size={20} className="md:w-6 md:h-6" /> Commit Record to Storage
+          <div className="p-4 sm:p-6 md:p-10 border-t border-white/5 bg-[#0a0a0b] shrink-0 flex flex-row gap-3 md:gap-6 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
+            <button onClick={handleSave} className="flex-1 bg-red-700 text-white font-black py-4 md:py-5 px-2 sm:px-6 rounded-2xl md:rounded-[2.5rem] hover:bg-red-800 flex items-center justify-center gap-2 md:gap-4 transition-all active:scale-95 shadow-2xl shadow-red-700/40 uppercase tracking-[0.1em] md:tracking-[0.3em] text-[9px] sm:text-[10px] md:text-xs border border-red-600/50">
+              <Save size={16} className="md:w-6 md:h-6 shrink-0" /> 
+              <span className="truncate">Commit Record<span className="hidden sm:inline"> to Storage</span></span>
             </button>
-            <button onClick={onCancel} className="px-6 md:px-12 bg-white/5 text-gray-500 font-black py-4 md:py-5 rounded-2xl md:rounded-[2.5rem] border border-white/10 hover:bg-white/10 hover:text-white active:scale-95 transition-all uppercase tracking-[0.2em] md:tracking-[0.3em] text-[10px] md:text-xs">
+            <button onClick={onCancel} className="px-5 sm:px-8 md:px-12 bg-white/5 text-gray-500 font-black py-4 md:py-5 rounded-2xl md:rounded-[2.5rem] border border-white/10 hover:bg-white/10 hover:text-white active:scale-95 transition-all uppercase tracking-[0.1em] md:tracking-[0.3em] text-[9px] sm:text-[10px] md:text-xs shrink-0">
               Discard
             </button>
           </div>
@@ -415,25 +484,51 @@ const ProInvoiceGenerator: React.FC<ProInvoiceGeneratorProps> = ({ initialData, 
         <div 
           ref={previewContainerRef}
           style={isLargeScreen ? { width: `${100 - editorWidth}%`, flex: 'none' } : {}}
-          className="hidden lg:flex bg-black/50 p-12 overflow-y-auto flex flex-col items-center scrollbar-hide border-l border-white/10"
+          className={`${isLargeScreen ? 'flex' : (mobilePreviewMode ? 'flex flex-1 w-full' : 'hidden')} bg-black/50 p-4 lg:p-12 overflow-y-auto flex-col items-center scrollbar-hide border-l border-white/10 relative`}
         >
-          <div className="mb-8 w-full flex justify-between items-center text-white/30">
-            <div className="flex items-center gap-4">
-               <div className="w-2.5 h-2.5 rounded-full bg-red-700 animate-pulse"></div>
-               <span className="text-[11px] font-black uppercase tracking-[0.4em]">Live Rendering Engine</span>
-               <span className="px-2 py-0.5 text-[9px] font-bold bg-white/10 rounded text-white font-mono">
+          {!isLargeScreen && mobilePreviewMode && (
+            <div className="w-full flex justify-end mb-4">
+              <button 
+                onClick={() => setMobilePreviewMode(false)}
+                className="px-6 py-3 bg-white/5 border border-white/10 text-white rounded-full font-black uppercase tracking-widest text-xs hover:bg-white/10 transition-all shadow-lg flex items-center gap-2"
+              >
+                <Edit3 className="w-4 h-4" /> Back to Edit
+              </button>
+            </div>
+          )}
+          <div className="mb-6 md:mb-8 w-full flex flex-wrap justify-between items-center gap-4 text-white/30">
+            <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-[200px]">
+               <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-red-700 animate-pulse shrink-0"></div>
+               <span className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] md:tracking-[0.4em] line-clamp-2 leading-tight">Live Rendering Engine</span>
+               <span className="px-2 py-0.5 text-[8px] md:text-[9px] font-bold bg-white/10 rounded text-white font-mono shrink-0">
                  Zoom: {Math.round(previewZoom * 100)}%
                </span>
             </div>
             <div className="flex items-center gap-2 text-[11px]">
-              <span className="text-gray-500 text-[10px]">Ctrl + Scroll to Zoom</span>
-              <button 
-                onClick={() => setPreviewZoom(0.65)} 
-                className="px-2 py-0.5 bg-red-700/20 hover:bg-red-700 text-red-500 hover:text-white rounded border border-red-700/30 transition-all font-mono text-[10px]"
-                title="Reset Zoom"
-              >
-                Reset
-              </button>
+              <span className="hidden md:inline text-gray-500 text-[10px] shrink-0">Ctrl + Scroll to Zoom</span>
+              <div className="flex items-center gap-1 bg-red-700/10 p-1 rounded-lg border border-red-700/20">
+                <button 
+                  onClick={() => setPreviewZoom(p => { const v = Math.max(0.25, p - 0.1); localStorage.setItem('gd_preview_zoom', v.toFixed(3)); return v; })} 
+                  className="w-6 h-6 flex items-center justify-center text-red-500 hover:bg-red-700 hover:text-white rounded transition-all"
+                  title="Zoom Out"
+                >
+                  <Minus size={12} />
+                </button>
+                <button 
+                  onClick={() => { setPreviewZoom(0.65); localStorage.setItem('gd_preview_zoom', '0.65'); }} 
+                  className="px-2 h-6 text-red-500 hover:bg-red-700 hover:text-white rounded transition-all font-mono text-[10px] font-bold"
+                  title="Reset Zoom"
+                >
+                  Reset
+                </button>
+                <button 
+                  onClick={() => setPreviewZoom(p => { const v = Math.min(2.5, p + 0.1); localStorage.setItem('gd_preview_zoom', v.toFixed(3)); return v; })} 
+                  className="w-6 h-6 flex items-center justify-center text-red-500 hover:bg-red-700 hover:text-white rounded transition-all"
+                  title="Zoom In"
+                >
+                  <Plus size={12} />
+                </button>
+              </div>
             </div>
           </div>
           <div className="transition-transform duration-300 ease-out origin-top">

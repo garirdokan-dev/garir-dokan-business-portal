@@ -105,11 +105,11 @@ const HERO_IMAGE_POOL = [
   "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=2000",
   "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&q=80&w=2000",
   "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&q=80&w=2000",
-  "https://images.unsplash.com/photo-1525609004556-c46c7d6cf048?auto=format&fit=crop&q=80&w=2000",
+  "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=2000",
   "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&q=80&w=2000",
   "https://images.unsplash.com/photo-1542281286-9e0a16bb7366?auto=format&fit=crop&q=80&w=2000",
   "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=2000",
-  "https://images.unsplash.com/photo-1493238555826-397b0d3f679a?auto=format&fit=crop&q=80&w=2000",
+  "https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&q=80&w=2000",
   "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=2000",
   "https://images.unsplash.com/photo-1553440569-bcc63803a83d?auto=format&fit=crop&q=80&w=2000",
   "https://images.unsplash.com/photo-1567818735868-e71b99932e29?auto=format&fit=crop&q=80&w=2000",
@@ -293,6 +293,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
           setHeroSettings({
             ...heroSettings,
             selectedImages: [...heroSettings.selectedImages, newUrl],
+            customImages: [...(heroSettings.customImages || []), newUrl],
             removedImages: heroSettings.removedImages?.filter(img => img !== newUrl) || []
           });
         }
@@ -1217,7 +1218,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                         </label>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4 mt-4">
-                        {Array.from(new Set([...HERO_IMAGE_POOL, ...heroSettings.selectedImages]))
+                        {Array.from(new Set([...HERO_IMAGE_POOL, ...(heroSettings.customImages || []), ...heroSettings.selectedImages]))
                           .filter(url => !heroSettings.removedImages?.includes(url))
                           .map((url, idx) => {
                           const isSelected = heroSettings.selectedImages.includes(url);
@@ -1253,7 +1254,8 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                                   if (isCustom) {
                                     setHeroSettings({
                                       ...heroSettings,
-                                      selectedImages: heroSettings.selectedImages.filter(img => img !== url)
+                                      selectedImages: heroSettings.selectedImages.filter(img => img !== url),
+                                      customImages: (heroSettings.customImages || []).filter(img => img !== url)
                                     });
                                   } else {
                                     setHeroSettings({
@@ -1327,8 +1329,8 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                     <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-gray-500">Real-time Hero Preview</span>
                     <div className="h-px flex-1 bg-white/5"></div>
                   </div>
-                  <div className="bg-white rounded-2xl md:rounded-[3rem] border border-white/10 shadow-2xl relative overflow-hidden group p-0 h-[200px] md:h-[280px]">
-                     <div className="absolute inset-0 bg-black/10"></div>
+                  <div className="bg-[#0a0a0b] rounded-2xl md:rounded-[3rem] border border-white/10 shadow-2xl relative overflow-hidden group p-0 h-[200px] md:h-[280px]">
+                     <div className="absolute inset-0 bg-[rgba(0,0,0,0.1)] pointer-events-none z-10"></div>
                      {heroSettings.selectedImages.length > 0 ? (
                        <img 
                          src={heroSettings.selectedImages[0]} 
@@ -1382,7 +1384,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                               onClick={handleImageClick}
                             >
                               <img src={url} className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors"></div>
+                              <div className="absolute inset-0 bg-[rgba(0,0,0,0.2)] group-hover:bg-[rgba(0,0,0,0.1)] transition-colors"></div>
                               
                               {/* Focus Marker */}
                               <div 
