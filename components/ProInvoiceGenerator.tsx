@@ -282,7 +282,7 @@ const ProInvoiceGenerator: React.FC<ProInvoiceGeneratorProps> = ({ initialData, 
                 <div className="flex items-center gap-2 md:gap-3">
                   <span className="text-[7px] md:text-[9px] font-black text-gray-500 uppercase tracking-[0.1em] md:tracking-[0.3em] truncate">ID: {formData.id?.slice(0,8).toUpperCase()}</span>
                   <div className="w-1 h-1 rounded-full bg-red-700 animate-pulse shrink-0"></div>
-                  <span className="text-[7px] md:text-[9px] font-black text-red-700 uppercase tracking-[0.1em] md:tracking-[0.3em] truncate">Live Cloud Buffer</span>
+                  <span className="text-[7px] md:text-[9px] font-black text-red-700 uppercase tracking-[0.1em] md:tracking-[0.3em] truncate">Live Buffer</span>
                 </div>
               </div>
             </div>

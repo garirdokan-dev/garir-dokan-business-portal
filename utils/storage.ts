@@ -1,6 +1,4 @@
-
 import { BusinessDocument, Asset, DocumentType, FooterSettings, HeaderSettings, HeroSettings } from '../types.ts';
-import { supabase } from './supabase.ts';
 
 export interface LogoSettings {
   logoUrl?: string;
@@ -12,101 +10,105 @@ export interface UserPreferences {
   typeSettings: Partial<Record<DocumentType, LogoSettings>>;
 }
 
-// Documents Supabase Utils
+const STORAGE_KEYS = {
+  DOCUMENTS: 'gd_documents',
+  ASSETS: 'gd_assets',
+  PREFERENCES: 'gd_user_preferences',
+  GLOBAL_FOOTER: 'gd_global_footer',
+  GLOBAL_HEADERS: 'gd_global_headers_v2',
+  HERO_BANNER: 'gd_hero_banner'
+};
+
+// Documents Local Storage Utils
 export const loadDocuments = async (): Promise<BusinessDocument[]> => {
   try {
-    const { data, error } = await supabase
-      .from('documents')
-      .select('data')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data ? data.map(item => item.data as BusinessDocument) : [];
+    const raw = localStorage.getItem(STORAGE_KEYS.DOCUMENTS);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
   } catch (e) {
-    console.warn('Failed to load documents (falling back to empty):', e);
+    console.warn('Failed to load documents from local storage:', e);
     return [];
   }
 };
 
 export const addOrUpdateDocument = async (doc: BusinessDocument): Promise<BusinessDocument[]> => {
   try {
-    const { error } = await supabase
-      .from('documents')
-      .upsert({ 
-        id: doc.id, 
-        data: doc,
-        created_at: new Date(doc.createdAt).toISOString()
-      }, { onConflict: 'id' });
-
-    if (error) throw error;
-    return await loadDocuments();
+    const current = await loadDocuments();
+    const index = current.findIndex(d => d.id === doc.id);
+    let updated: BusinessDocument[];
+    if (index >= 0) {
+      updated = [...current];
+      updated[index] = doc;
+    } else {
+      updated = [doc, ...current];
+    }
+    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(updated));
+    return updated;
   } catch (error) {
-    console.error('Failed to save document:', error);
-    alert('Failed to save to cloud database.');
-    return [];
+    console.error('Failed to save document to storage:', error);
+    alert('Failed to save document to local storage.');
+    return await loadDocuments();
   }
 };
 
 export const deleteDocument = async (id: string): Promise<BusinessDocument[]> => {
   try {
-    const { error } = await supabase
-      .from('documents')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-    return await loadDocuments();
+    const current = await loadDocuments();
+    const updated = current.filter(d => d.id !== id);
+    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(updated));
+    return updated;
   } catch (e) {
-    console.error('Failed to delete document:', e);
-    return [];
+    console.error('Failed to delete document from storage:', e);
+    return await loadDocuments();
   }
 };
 
-// Asset Library Supabase Utils
+// Asset Library Local Storage Utils
 export const loadAssets = async (): Promise<Asset[]> => {
   try {
-    const { data, error } = await supabase
-      .from('assets')
-      .select('data');
-
-    if (error) throw error;
-    return data ? data.map(item => item.data as Asset) : [];
+    const raw = localStorage.getItem(STORAGE_KEYS.ASSETS);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
   } catch (e) {
-    console.warn('Failed to load assets:', e);
+    console.warn('Failed to load assets from local storage:', e);
     return [];
   }
 };
 
 export const saveAsset = async (asset: Asset): Promise<Asset[]> => {
   try {
-    const { error } = await supabase
-      .from('assets')
-      .upsert({ id: asset.id, data: asset });
-
-    if (error) throw error;
-    return await loadAssets();
+    const current = await loadAssets();
+    const index = current.findIndex(a => a.id === asset.id);
+    let updated: Asset[];
+    if (index >= 0) {
+      updated = [...current];
+      updated[index] = asset;
+    } else {
+      updated = [asset, ...current];
+    }
+    localStorage.setItem(STORAGE_KEYS.ASSETS, JSON.stringify(updated));
+    return updated;
   } catch (error) {
-    console.error('Failed to save asset:', error);
+    console.error('Failed to save asset to storage:', error);
     return await loadAssets();
   }
 };
 
 export const deleteAsset = async (id: string): Promise<Asset[]> => {
   try {
-    const { error } = await supabase
-      .from('assets')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-    return await loadAssets();
+    const current = await loadAssets();
+    const updated = current.filter(a => a.id !== id);
+    localStorage.setItem(STORAGE_KEYS.ASSETS, JSON.stringify(updated));
+    return updated;
   } catch (e) {
-    console.error('Failed to delete asset:', e);
-    return [];
+    console.error('Failed to delete asset from storage:', e);
+    return await loadAssets();
   }
 };
 
-// User Preferences Supabase Utils
+// User Preferences Local Storage Utils
 export const saveTypePreferences = async (type: DocumentType, settings: LogoSettings) => {
   try {
     const currentPrefs = await loadPreferences();
@@ -117,25 +119,18 @@ export const saveTypePreferences = async (type: DocumentType, settings: LogoSett
         [type]: settings
       }
     };
-    
-    await supabase
-      .from('preferences')
-      .upsert({ id: 'user_prefs', data: updatedPrefs });
+    localStorage.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(updatedPrefs));
   } catch (e) {
-    console.error('Failed to save preferences:', e);
+    console.error('Failed to save preferences to storage:', e);
   }
 };
 
 export const loadPreferences = async (): Promise<UserPreferences> => {
   try {
-    const { data, error } = await supabase
-      .from('preferences')
-      .select('data')
-      .eq('id', 'user_prefs')
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "no rows found"
-    return data ? (data.data as UserPreferences) : { typeSettings: {} };
+    const raw = localStorage.getItem(STORAGE_KEYS.PREFERENCES);
+    if (!raw) return { typeSettings: {} };
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : { typeSettings: {} };
   } catch (e) {
     return { typeSettings: {} };
   }
@@ -148,120 +143,80 @@ export const getTypePreferences = async (type: DocumentType): Promise<LogoSettin
 
 // Global Footer Settings Utils
 export const loadFooterSettings = async (): Promise<FooterSettings> => {
-  try {
-    const { data, error } = await supabase
-      .from('preferences')
-      .select('data')
-      .eq('id', 'global_footer')
-      .single();
+  const defaultFooter: FooterSettings = {
+    address: 'A.Hamid Road, Pabna',
+    email: 'garirdokan2021@gmail.com',
+    phone1: '+880 1713 110 570',
+    phone2: '+880 1785 2555 86',
+    website: 'garirdokan.com',
+    bottomOffset: 10,
+    topPadding: 0,
+    horizontalPadding: 15,
+    lineSpacing: 3
+  };
 
-    if (error && error.code !== 'PGRST116') throw error;
-    
-    return data ? (data.data as FooterSettings) : {
-      address: 'A.Hamid Road, Pabna',
-      email: 'garirdokan2021@gmail.com',
-      phone1: '+880 1713 110 570',
-      phone2: '+880 1785 2555 86',
-      website: 'garirdokan.com',
-      bottomOffset: 10,
-      topPadding: 0,
-      horizontalPadding: 15,
-      lineSpacing: 3
-    };
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.GLOBAL_FOOTER);
+    if (!raw) return defaultFooter;
+    const parsed = JSON.parse(raw);
+    return { ...defaultFooter, ...parsed };
   } catch (e) {
-    return {
-      address: 'A.Hamid Road, Pabna',
-      email: 'garirdokan2021@gmail.com',
-      phone1: '+880 1713 110 570',
-      phone2: '+880 1785 2555 86',
-      website: 'garirdokan.com',
-      bottomOffset: 10,
-      topPadding: 0,
-      horizontalPadding: 15,
-      lineSpacing: 3
-    };
+    return defaultFooter;
   }
 };
 
 export const saveFooterSettings = async (settings: FooterSettings) => {
   try {
-    await supabase
-      .from('preferences')
-      .upsert({ id: 'global_footer', data: settings });
+    localStorage.setItem(STORAGE_KEYS.GLOBAL_FOOTER, JSON.stringify(settings));
   } catch (e) {
-    console.error('Failed to save footer settings:', e);
+    console.error('Failed to save footer settings to storage:', e);
   }
 };
 
 // Global Header Settings Utils
 export const loadAllHeaderSettings = async (): Promise<Record<DocumentType, HeaderSettings>> => {
+  const defaultHeader: HeaderSettings = {
+    text: 'Importer & All kinds of Brand new & Reconditioned Vehicles Supplier',
+    fontSize: 14,
+    fontFamily: 'serif',
+    alignment: 'left',
+    isItalic: true,
+    logoUrl: '',
+    logoSize: 220,
+    logoPosition: 0
+  };
+
+  const initial: Record<DocumentType, HeaderSettings> = {
+    [DocumentType.INVOICE]: { ...defaultHeader },
+    [DocumentType.QUOTATION]: { ...defaultHeader },
+    [DocumentType.BILL]: { ...defaultHeader },
+    [DocumentType.CHALLAN]: { ...defaultHeader },
+    [DocumentType.PRO_INVOICE]: { ...defaultHeader }
+  };
+
   try {
-    const { data, error } = await supabase
-      .from('preferences')
-      .select('data')
-      .eq('id', 'global_headers_v2')
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error;
-    
-    const defaultHeader: HeaderSettings = {
-      text: 'Importer & All kinds of Brand new & Reconditioned Vehicles Supplier',
-      fontSize: 14,
-      fontFamily: 'serif',
-      alignment: 'left',
-      isItalic: true,
-      logoUrl: '',
-      logoSize: 220,
-      logoPosition: 0
-    };
-
-    const initial: Record<DocumentType, HeaderSettings> = {
-      [DocumentType.INVOICE]: { ...defaultHeader },
-      [DocumentType.QUOTATION]: { ...defaultHeader },
-      [DocumentType.BILL]: { ...defaultHeader },
-      [DocumentType.CHALLAN]: { ...defaultHeader },
-      [DocumentType.PRO_INVOICE]: { ...defaultHeader }
-    };
-
-    if (!data || !data.data) return initial;
-
-    // Merge with defaults in case new document types are added
-    return { ...initial, ...(data.data as Record<DocumentType, HeaderSettings>) };
+    const raw = localStorage.getItem(STORAGE_KEYS.GLOBAL_HEADERS);
+    if (!raw) return initial;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return initial;
+    return { ...initial, ...parsed };
   } catch (e) {
-    console.warn('Failed to load all header settings:', e);
-    const defaultHeader: HeaderSettings = {
-      text: 'Importer & All kinds of Brand new & Reconditioned Vehicles Supplier',
-      fontSize: 14,
-      fontFamily: 'serif',
-      alignment: 'left',
-      isItalic: true,
-      logoUrl: '',
-      logoSize: 220,
-      logoPosition: 0
-    };
-    return {
-      [DocumentType.INVOICE]: { ...defaultHeader },
-      [DocumentType.QUOTATION]: { ...defaultHeader },
-      [DocumentType.BILL]: { ...defaultHeader },
-      [DocumentType.CHALLAN]: { ...defaultHeader },
-      [DocumentType.PRO_INVOICE]: { ...defaultHeader }
-    };
+    console.warn('Failed to load all header settings from storage:', e);
+    return initial;
   }
 };
 
 export const saveAllHeaderSettings = async (settings: Record<DocumentType, HeaderSettings>) => {
   try {
-    await supabase
-      .from('preferences')
-      .upsert({ id: 'global_headers_v2', data: settings });
+    localStorage.setItem(STORAGE_KEYS.GLOBAL_HEADERS, JSON.stringify(settings));
   } catch (e) {
-    console.error('Failed to save all header settings:', e);
+    console.error('Failed to save all header settings to storage:', e);
   }
 };
 
 export const loadHeaderSettings = async (): Promise<HeaderSettings> => {
   const all = await loadAllHeaderSettings();
-  return all[DocumentType.INVOICE]; // Default to Invoice for legacy callers
+  return all[DocumentType.INVOICE];
 };
 
 export const saveHeaderSettings = async (settings: HeaderSettings) => {
@@ -272,49 +227,33 @@ export const saveHeaderSettings = async (settings: HeaderSettings) => {
 
 // Hero Banner Settings Utils
 export const loadHeroSettings = async (): Promise<HeroSettings> => {
-  try {
-    const { data, error } = await supabase
-      .from('preferences')
-      .select('data')
-      .eq('id', 'hero_banner')
-      .single();
+  const defaultHero: HeroSettings = {
+    selectedImages: [
+      "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&q=80&w=2000",
+      "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=2000",
+      "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&q=80&w=2000"
+    ],
+    transitionEffect: 'fade',
+    interval: 5000,
+    backgroundPosition: '50% 50%',
+    imagePositions: {},
+    removedImages: []
+  };
 
-    if (error && error.code !== 'PGRST116') throw error;
-    
-    return data ? (data.data as HeroSettings) : {
-      selectedImages: [
-        "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&q=80&w=2000",
-        "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=2000",
-        "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&q=80&w=2000"
-      ],
-      transitionEffect: 'fade',
-      interval: 5000,
-      backgroundPosition: '50% 50%',
-      imagePositions: {},
-      removedImages: []
-    };
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.HERO_BANNER);
+    if (!raw) return defaultHero;
+    const parsed = JSON.parse(raw);
+    return { ...defaultHero, ...parsed };
   } catch (e) {
-    return {
-      selectedImages: [
-        "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&q=80&w=2000",
-        "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=2000",
-        "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&q=80&w=2000"
-      ],
-      transitionEffect: 'fade',
-      interval: 5000,
-      backgroundPosition: '50% 50%',
-      imagePositions: {},
-      removedImages: []
-    };
+    return defaultHero;
   }
 };
 
 export const saveHeroSettings = async (settings: HeroSettings) => {
   try {
-    await supabase
-      .from('preferences')
-      .upsert({ id: 'hero_banner', data: settings });
+    localStorage.setItem(STORAGE_KEYS.HERO_BANNER, JSON.stringify(settings));
   } catch (e) {
-    console.error('Failed to save hero settings:', e);
+    console.error('Failed to save hero settings to storage:', e);
   }
 };
