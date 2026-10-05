@@ -1,8 +1,6 @@
 {
-  "name": "Remix GARIR DOKAN DOC MANAGER",
+  "name": "GARIR DOKAN DOC MANAGER",
   "description": "A comprehensive web-based system for creating, managing, and exporting business documents like Invoices, Quotations, Bills, and Delivery Challans with PDF support.",
   "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

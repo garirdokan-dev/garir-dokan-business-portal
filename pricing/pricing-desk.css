@@ -1,0 +1,547 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ==========================================================================
+   PRICING DESK THEME — follows the site: near-black surfaces, red accent,
+   soft white overlays, Plus Jakarta Sans, and the site's light-mode switch.
+   ========================================================================== */
+.gd-app {
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Plus Jakarta Sans', sans-serif;
+  --font-mono: 'Courier Prime', ui-monospace, monospace;
+  --font-oswald: 'Plus Jakarta Sans', sans-serif;
+  --mono-stack: 'Courier Prime', ui-monospace, monospace;
+
+  --petrol:#0a0a0b;  --petrol-d:#050506;  --petrol-l:rgba(255,255,255,.08);
+  --paper:rgba(255,255,255,.05);  --paper-2:rgba(255,255,255,.04);
+  --head:rgba(255,255,255,.07);   --manila:#ffffff;
+
+  --ink:#ffffff;  --ink-soft:#9ca3af;  --ink-faint:#6b7280;
+  --stamp:#b91c1c;  --stamp-d:#991b1b;  --stamp-soft:#ef4444;
+
+  --green:#34d399;  --green-bg:rgba(16,185,129,.12);
+  --amber:#fbbf24;  --amber-bg:rgba(245,158,11,.12);
+  --red:#f87171;    --red-bg:rgba(239,68,68,.12);
+
+  --line:rgba(255,255,255,.10);  --line-soft:rgba(255,255,255,.06);
+  --shadow:0 24px 60px -30px rgba(0,0,0,.9);
+  --grid:repeating-linear-gradient(90deg,rgba(255,255,255,.55) 0 1px,transparent 1px 26px),
+         repeating-linear-gradient(0deg,rgba(255,255,255,.45) 0 1px,transparent 1px 26px);
+}
+
+html.light-mode .gd-app {
+  --petrol:#f3f4f6;  --petrol-d:#e5e7eb;  --petrol-l:rgba(0,0,0,.06);
+  --paper:#ffffff;   --paper-2:#f9fafb;   --head:rgba(0,0,0,.04);  --manila:#111827;
+  --ink:#111827;  --ink-soft:#4b5563;  --ink-faint:#6b7280;
+  --green:#047857;  --green-bg:rgba(4,120,87,.10);
+  --amber:#b45309;  --amber-bg:rgba(180,83,9,.10);
+  --red:#b91c1c;    --red-bg:rgba(185,28,28,.10);
+  --line:rgba(0,0,0,.10);  --line-soft:rgba(0,0,0,.06);
+  --shadow:0 20px 45px -28px rgba(0,0,0,.35);
+  --grid:repeating-linear-gradient(90deg,rgba(0,0,0,.45) 0 1px,transparent 1px 26px),
+         repeating-linear-gradient(0deg,rgba(0,0,0,.35) 0 1px,transparent 1px 26px);
+}
+
+.font-oswald { font-family: var(--font-oswald); }
+
+.gd-app{
+  min-height:100vh;
+  color:var(--ink);
+  background:
+    radial-gradient(1100px 520px at 88% -8%,rgba(185,28,28,.16) 0%,transparent 60%),
+    radial-gradient(900px 480px at -5% 108%,rgba(185,28,28,.10) 0%,transparent 55%),
+    var(--petrol);
+  background-attachment:fixed;
+  line-height:1.5;
+  font-family:var(--font-sans);
+  -webkit-font-smoothing:antialiased;
+}
+.gd-app *,.gd-app *::before,.gd-app *::after{box-sizing:border-box}
+
+/* ==========================================================================
+   APP SHELL — collapsible left panel + content area
+   ========================================================================== */
+.gd-app{--gd-nav:76px}
+@media(min-width:768px){.gd-app{--gd-nav:96px}}
+.gd-shell{display:flex;min-height:calc(100vh - var(--gd-nav));width:100%;padding-top:var(--gd-nav)}
+
+.gd-side{position:sticky;top:var(--gd-nav);height:calc(100vh - var(--gd-nav));flex:0 0 268px;width:268px;z-index:40;
+  display:flex;flex-direction:column;overflow:hidden;
+  background:rgba(7,35,33,.72);border-right:1px solid rgba(240,231,212,.12);
+  transition:width .22s ease,flex-basis .22s ease}
+.gd-side::before{content:"";position:absolute;inset:0;opacity:.07;pointer-events:none;
+  background-image:var(--grid);
+  -webkit-mask-image:linear-gradient(180deg,#000 0%,transparent 55%);
+          mask-image:linear-gradient(180deg,#000 0%,transparent 55%)}
+.gd-side.is-collapsed{flex-basis:64px;width:64px}
+
+.gd-side-head{position:relative;display:flex;align-items:center;gap:10px;height:72px;padding:0 14px 0 18px;
+  border-bottom:1px solid rgba(240,231,212,.12);flex:0 0 auto}
+.gd-side.is-collapsed .gd-side-head{padding:0;justify-content:center}
+.gd-brand{display:flex;align-items:center;gap:11px;min-width:0;flex:1}
+.gd-brand-seal{flex:0 0 auto;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;
+  border:2px solid var(--stamp);transform:rotate(-7deg);background:rgba(193,69,44,.07)}
+.gd-brand-seal b{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px;color:#E9DFC9;line-height:1}
+.gd-brand-text{min-width:0}
+.gd-brand-text strong{display:block;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;
+  color:var(--manila);letter-spacing:.01em;white-space:nowrap}
+.gd-brand-text span{display:block;font-family:var(--mono-stack);font-size:9px;letter-spacing:.2em;
+  color:rgba(240,231,212,.5);text-transform:uppercase;white-space:nowrap}
+.gd-side.is-collapsed .gd-brand{display:none}
+
+.gd-toggle{flex:0 0 auto;width:32px;height:32px;display:grid;place-items:center;border-radius:7px;cursor:pointer;
+  color:rgba(240,231,212,.85);background:rgba(240,231,212,.06);border:1px solid rgba(240,231,212,.22);
+  transition:background .15s,border-color .15s,color .15s}
+.gd-toggle:hover{background:rgba(240,231,212,.14);border-color:rgba(240,231,212,.4);color:var(--manila)}
+.gd-toggle:focus-visible{outline:2px solid var(--stamp-soft);outline-offset:2px}
+
+.gd-nav{position:relative;flex:1;overflow-y:auto;overflow-x:hidden;padding:18px 12px 12px}
+.gd-side.is-collapsed .gd-nav{padding:14px 10px}
+.gd-sec-label{font-family:var(--mono-stack);font-size:10.5px;font-weight:600;letter-spacing:.2em;
+  color:var(--stamp-soft);text-transform:uppercase;padding:0 10px;margin:4px 0 10px;white-space:nowrap}
+.gd-sec-label + .gd-nav-item{margin-top:0}
+.gd-sec-gap{height:18px}
+.gd-side.is-collapsed .gd-sec-label{display:none}
+.gd-side.is-collapsed .gd-sec-gap{height:1px;margin:10px 6px;background:rgba(240,231,212,.12)}
+
+.gd-nav-item{position:relative;display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+  padding:9px 10px;margin-top:4px;border-radius:7px;cursor:pointer;border:0;background:transparent;
+  color:rgba(240,231,212,.9);transition:background .15s,color .15s;font:inherit}
+.gd-nav-item:hover{background:rgba(240,231,212,.07)}
+.gd-nav-item:focus-visible{outline:2px solid var(--stamp-soft);outline-offset:1px}
+.gd-nav-item.is-active{background:var(--manila);color:var(--ink)}
+.gd-nav-item.is-active::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:3.5px;
+  border-radius:0 3px 3px 0;background:var(--stamp)}
+.gd-side.is-collapsed .gd-nav-item{justify-content:center;padding:8px 0}
+
+.gd-nav-ico{flex:0 0 auto;width:28px;height:28px;display:grid;place-items:center;border-radius:7px;
+  font-family:var(--mono-stack);font-size:10px;font-weight:700;letter-spacing:.02em;
+  color:var(--manila);background:rgba(240,231,212,.08);border:1px solid rgba(240,231,212,.2)}
+.gd-nav-ico.is-taka{font-family:'Space Grotesk',sans-serif;font-size:16px}
+.gd-nav-item.is-active .gd-nav-ico{background:var(--petrol);border-color:var(--petrol);color:var(--manila)}
+
+.gd-nav-text{min-width:0;line-height:1.2}
+.gd-nav-text strong{display:block;font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gd-nav-text small{display:block;font-size:10.5px;margin-top:2px;color:rgba(240,231,212,.5);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.gd-nav-item.is-active .gd-nav-text small{color:var(--ink-faint)}
+.gd-side.is-collapsed .gd-nav-text{display:none}
+
+.gd-side-foot{position:relative;display:flex;align-items:center;gap:8px;padding:14px 20px 18px;
+  border-top:1px solid rgba(240,231,212,.12);color:rgba(240,231,212,.5);font-size:11px;white-space:nowrap;flex:0 0 auto}
+.gd-side.is-collapsed .gd-side-foot{justify-content:center;padding:14px 0 18px}
+.gd-side.is-collapsed .gd-side-foot span{display:none}
+
+.gd-content{flex:1;min-width:0}
+
+/* phones: the open panel floats over the page instead of squeezing it */
+.gd-scrim{display:none}
+@media (max-width:760px){
+  .gd-side{position:fixed;left:0;top:var(--gd-nav);bottom:0;height:auto;box-shadow:12px 0 40px -18px rgba(0,0,0,.6)}
+  .gd-side.is-collapsed{box-shadow:none}
+  .gd-content{padding-left:64px}
+  .gd-scrim{display:block;position:fixed;inset:0;z-index:35;background:rgba(3,15,14,.45);backdrop-filter:blur(1px)}
+}
+
+/* ==========================================================================
+   PAGE PRIMITIVES for the stock tools (gd- prefix so they never collide with
+   the Japan to BD Convert tool's own .mast/.sheet/.drop classes)
+   ========================================================================== */
+.gd-wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+
+.gd-mast{position:relative;overflow:hidden;border-bottom:1px solid rgba(240,231,212,.16)}
+.gd-mast::before{content:"";position:absolute;inset:0;opacity:.08;pointer-events:none;background-image:var(--grid);
+  -webkit-mask-image:radial-gradient(120% 100% at 50% 0%,#000 35%,transparent 78%);
+          mask-image:radial-gradient(120% 100% at 50% 0%,#000 35%,transparent 78%)}
+.gd-mast-in{position:relative;display:flex;align-items:center;gap:20px;padding:26px 0 30px}
+.gd-seal{flex:0 0 auto;width:74px;height:74px;display:grid;place-items:center;border:2.5px solid var(--stamp);
+  border-radius:50%;transform:rotate(-7deg);box-shadow:0 0 0 2px rgba(193,69,44,.25);background:rgba(193,69,44,.06);position:relative}
+.gd-seal b{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:34px;color:#E9DFC9}
+.gd-seal small{position:absolute;bottom:7px;font-size:6.5px;letter-spacing:.18em;color:var(--stamp);font-weight:600;white-space:nowrap}
+.gd-mast h1{font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--manila);
+  font-size:clamp(24px,4.2vw,38px);letter-spacing:-.01em;line-height:1.02;margin:0}
+.gd-lede{color:rgba(240,231,212,.74);margin:5px 0 0;font-size:14.5px;max-width:58ch}
+.gd-bn{color:rgba(240,231,212,.5);font-size:12.5px;margin-top:3px}
+.gd-ticket{margin-left:auto;align-self:flex-start;border:1px solid rgba(240,231,212,.28);border-radius:4px;
+  padding:9px 13px;color:rgba(240,231,212,.78);font-size:11px;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap}
+@media(max-width:680px){.gd-ticket{display:none}.gd-mast-in{gap:12px}}
+
+.gd-sheet{background:var(--paper);border-radius:8px;box-shadow:var(--shadow);margin:26px 0;overflow:hidden;border:1px solid rgba(0,0,0,.06)}
+.gd-sheet-head{display:flex;align-items:center;gap:12px;background:var(--manila);border-bottom:1.5px solid var(--line);padding:13px 22px}
+.gd-tag{font-family:var(--mono-stack);font-size:11px;font-weight:600;letter-spacing:.16em;color:var(--stamp);text-transform:uppercase}
+.gd-sheet-head h2{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;color:var(--ink);margin:0}
+.gd-sheet-head .gd-head-bn{margin-left:auto;color:var(--ink-faint);font-size:12.5px}
+@media(max-width:600px){.gd-sheet-head .gd-head-bn{display:none}}
+.gd-sheet-body{padding:22px}
+
+/* dropzones — same look as the costing tool's intake cards */
+.gd-intake{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:720px){.gd-intake{grid-template-columns:1fr}}
+.gd-drop{position:relative;border:1.5px dashed var(--line);border-radius:6px;background:var(--paper-2);
+  padding:22px 18px 16px;cursor:pointer;transition:border-color .18s,background .18s;display:flex;flex-direction:column;min-height:158px}
+.gd-drop:hover,.gd-drop:focus-visible{border-color:var(--stamp);background:#F7F1E2;outline:none}
+.gd-drop.is-drag{border-color:var(--green);background:#EEF4EA}
+.gd-drop.has{border-style:solid;border-color:var(--green);background:#F1F6EE;cursor:default}
+.gd-drop.is-disabled{opacity:.55;cursor:not-allowed}
+.gd-step{position:absolute;top:-12px;left:16px;width:24px;height:24px;border-radius:50%;background:var(--petrol);
+  color:var(--manila);display:grid;place-items:center;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px}
+.gd-drop h3{margin:2px 0 3px;font-size:15px;font-weight:600;color:var(--ink)}
+.gd-drop p{margin:0;color:var(--ink-soft);font-size:13px}
+.gd-hint{font-size:11.5px;color:var(--ink-faint);margin-top:4px}
+.gd-files{margin-top:auto;padding-top:12px;display:flex;align-items:center;gap:8px;
+  font-family:var(--mono-stack);font-size:11.5px;color:var(--green);word-break:break-all;line-height:1.5}
+.gd-none{color:var(--ink-faint)}
+.gd-remove{margin-left:auto;flex:0 0 auto;width:26px;height:26px;display:grid;place-items:center;border-radius:5px;cursor:pointer;
+  border:1px solid var(--line);background:#fff;color:var(--ink-soft)}
+.gd-remove:hover{border-color:var(--red);color:var(--red);background:var(--red-bg)}
+.gd-sample{align-self:flex-start;margin-top:10px;display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:5px;
+  font-size:11.5px;font-weight:600;color:var(--petrol);background:rgba(12,58,56,.07);border:1px solid rgba(12,58,56,.18);cursor:pointer}
+
+/* options + action rows */
+.gd-options{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line-soft)}
+.gd-field{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-soft);font-weight:600}
+.gd-field input{font:inherit;font-weight:500;font-size:12.5px;padding:6px 9px;border:1.5px solid var(--line);border-radius:5px;
+  background:#fff;color:var(--ink)}
+.gd-field input:focus{outline:none;border-color:var(--stamp)}
+.gd-btn-ghost{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:5px;cursor:pointer;border:0;
+  font:inherit;font-size:12.5px;font-weight:600;color:var(--petrol);background:#fff;box-shadow:0 0 0 1.5px var(--line) inset;
+  transition:transform .12s,box-shadow .12s}
+.gd-btn-ghost:not(:disabled):hover{box-shadow:0 0 0 1.5px var(--petrol) inset;transform:translateY(-1px)}
+.gd-btn-ghost:disabled{opacity:.42;cursor:not-allowed}
+.gd-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line-soft)}
+.gd-status{font-size:12.5px;display:inline-flex;align-items:center;gap:7px;color:var(--ink-faint)}
+.gd-status.ok{color:var(--green);font-weight:600}
+.gd-status.done{color:var(--stamp);font-weight:600}
+.gd-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-width:212px;
+  font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;letter-spacing:.02em;
+  padding:12px 24px;border-radius:5px;border:0;cursor:pointer;background:var(--stamp);color:#FBEFE9;
+  box-shadow:0 0 0 1.5px var(--stamp-d) inset,0 10px 22px -12px rgba(193,69,44,.8);
+  transition:transform .12s,box-shadow .12s,background .15s}
+.gd-btn-primary:not(:disabled):hover{background:var(--stamp-d);transform:translateY(-1px)}
+.gd-btn-primary:disabled{opacity:.42;cursor:not-allowed;transform:none}
+
+/* notices */
+.gd-error{margin:18px 0 0;padding:12px 14px;border:1.5px solid var(--stamp);background:#fff5f5;border-radius:6px;
+  font-size:12.5px;color:var(--ink);line-height:1.65}
+.gd-error b{color:var(--stamp);display:block;text-transform:uppercase;letter-spacing:.08em;font-size:11.5px;margin-bottom:2px}
+.gd-warn{margin:0 0 18px;padding:12px 14px;border:1px solid var(--amber);background:var(--amber-bg);border-radius:6px;
+  font-size:12.5px;color:var(--ink);line-height:1.6}
+.gd-warn b{color:var(--amber)}
+.gd-warn ul{margin:6px 0 0;padding:0;list-style:none}
+.gd-warn li{display:flex;gap:7px;margin-top:3px}
+.gd-warn li::before{content:"•";color:var(--amber);font-weight:700}
+
+.gd-empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:10px 0 4px;color:var(--ink-faint);font-size:12.5px}
+.gd-note{margin:6px 0 34px;text-align:center;font-family:var(--mono-stack);font-size:11px;color:rgba(240,231,212,.45)}
+
+/* processing overlay */
+.gd-overlay{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(3,20,19,.55);backdrop-filter:blur(3px)}
+.gd-overlay-card{width:min(92vw,440px);background:var(--paper);border-radius:8px;box-shadow:var(--shadow);overflow:hidden;
+  border:1px solid rgba(0,0,0,.06);text-align:center}
+.gd-overlay-card .gd-sheet-head{justify-content:flex-start}
+.gd-overlay-body{padding:18px 26px 24px}
+.gd-overlay-body h4{margin:8px 0 0;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;color:var(--ink)}
+.gd-overlay-body p{margin:4px 0 0;font-size:12.5px;color:var(--ink-faint);min-height:1.2em}
+.gd-progress{margin-top:16px;height:5px;border-radius:99px;background:var(--paper-2);overflow:hidden;border:1px solid var(--line-soft)}
+.gd-progress > div{height:100%;width:55%;border-radius:99px;background:var(--stamp)}
+
+/* ==========================================================================
+   PRICE CALCULATOR — month list, selects, duty picker, total
+   ========================================================================== */
+.gd-field-col{flex-direction:column;align-items:stretch;gap:5px}
+.gd-field-col > span{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint)}
+.gd-field-col small{font-size:11.5px;color:var(--ink-faint);font-weight:500}
+.gd-field-col select,.gd-field-col input{font:inherit;font-size:14px;font-weight:600;color:var(--ink);
+  padding:9px 11px;border:1.5px solid var(--line);border-radius:5px;background:#fff;width:100%}
+.gd-field-col select:focus,.gd-field-col input:focus{outline:none;border-color:var(--stamp)}
+.gd-field-col select:disabled{background:var(--paper-2);color:var(--ink-faint)}
+
+.gd-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:820px){.gd-grid3{grid-template-columns:1fr}}
+
+.gd-month-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.gd-month{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);border-radius:6px;
+  background:var(--paper-2);padding:10px 12px}
+.gd-month.is-on{border-color:var(--green);background:#F1F6EE}
+.gd-month-pick{flex:1;min-width:0;text-align:left;border:0;background:none;cursor:pointer;font:inherit;padding:0}
+.gd-month-name{display:flex;align-items:center;gap:6px;font-family:'Space Grotesk',sans-serif;font-weight:700;
+  font-size:14px;color:var(--ink)}
+.gd-month.is-on .gd-month-name{color:var(--green)}
+.gd-month-pick small{display:block;font-family:var(--mono-stack);font-size:11px;color:var(--ink-faint);
+  margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.gd-duty-pick{margin-top:18px;padding-top:16px;border-top:1px solid var(--line-soft)}
+.gd-duty-row{display:flex;align-items:center;gap:10px;padding:9px 12px;margin-top:7px;cursor:pointer;
+  border:1.5px solid var(--line);border-radius:5px;background:#fff}
+.gd-duty-row:hover{border-color:var(--stamp)}
+.gd-duty-row.is-on{border-color:var(--green);background:#F1F6EE}
+.gd-duty-code{font-family:var(--mono-stack);font-size:12.5px;color:var(--ink-soft)}
+.gd-duty-amt{margin-left:auto;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;color:var(--ink)}
+.gd-duty-row.is-on .gd-duty-amt{color:var(--green)}
+
+table.gd-sum{width:100%;border-collapse:collapse}
+table.gd-sum td{padding:11px 4px;border-bottom:1px solid var(--line-soft);font-size:14px;color:var(--ink)}
+table.gd-sum .gd-sum-sub{font-family:var(--mono-stack);font-size:11.5px;color:var(--ink-faint)}
+table.gd-sum .gd-sum-amt{text-align:right;font-family:'Space Grotesk',sans-serif;font-weight:600;white-space:nowrap}
+table.gd-sum tr.gd-sum-total td{border-bottom:0;border-top:2px solid var(--ink);padding-top:14px;
+  font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px}
+table.gd-sum tr.gd-sum-total .gd-sum-amt{font-size:24px;color:var(--stamp)}
+.gd-empty{gap:8px}
+
+/* collapsible sheet header */
+.gd-sheet-toggle{width:100%;border:0;cursor:pointer;font:inherit;text-align:left}
+.gd-sheet-toggle:hover{background:#EBE0C9}
+.gd-sheet-toggle .gd-head-bn{margin-left:auto}
+.gd-sheet-toggle .gd-dd-chev{display:inline-flex;margin-left:14px;color:var(--ink-soft)}
+.gd-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+@media(max-width:980px){.gd-grid4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.gd-grid4{grid-template-columns:1fr}}
+
+/* dropdown — same shape as the Delivery Challan garage picker */
+.gd-dd{position:relative;display:flex;flex-direction:column;gap:5px}
+.gd-dd-label{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint);font-weight:600}
+.gd-dd-trigger{display:flex;align-items:center;gap:10px;width:100%;padding:9px 11px;border-radius:5px;cursor:pointer;
+  border:1.5px solid var(--line);background:#fff;font:inherit;font-size:14px;font-weight:600;color:var(--ink-faint)}
+.gd-dd-trigger.has-value{color:var(--ink)}
+.gd-dd-trigger:hover:not(:disabled){border-color:var(--stamp)}
+.gd-dd-trigger.is-open{border-color:var(--stamp)}
+.gd-dd-trigger:disabled{background:var(--paper-2);cursor:not-allowed;opacity:.7}
+.gd-dd-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.gd-dd-chev{display:inline-flex;color:var(--ink-faint)}
+.gd-dd-panel{position:fixed;z-index:80;transform-origin:top;display:flex;flex-direction:column;
+  background:var(--petrol-d);border:1px solid rgba(240,231,212,.18);border-radius:6px;overflow:hidden;
+  box-shadow:0 22px 44px -20px rgba(0,0,0,.75)}
+.gd-dd-clear{display:block;width:100%;text-align:left;padding:11px 14px;border:0;cursor:pointer;font:inherit;
+  font-size:13.5px;font-weight:700;color:var(--stamp-soft);background:transparent;
+  border-bottom:1px solid rgba(240,231,212,.14)}
+.gd-dd-clear:hover{background:rgba(217,105,79,.12)}
+.gd-dd-list{max-height:280px;overflow-y:auto;overscroll-behavior:contain}
+.gd-dd-item{display:block;width:100%;text-align:left;padding:10px 14px;border:0;cursor:pointer;font:inherit;
+  font-size:13.5px;color:rgba(240,231,212,.92);background:transparent;border-bottom:1px solid rgba(240,231,212,.08)}
+.gd-dd-item:last-child{border-bottom:0}
+.gd-dd-item:hover{background:rgba(240,231,212,.10)}
+.gd-dd-item.is-on{background:rgba(240,231,212,.16);color:var(--manila);font-weight:700}
+.gd-dd-item small{display:block;font-family:var(--mono-stack);font-size:10.5px;color:rgba(240,231,212,.45);margin-top:2px}
+.gd-dd-empty{padding:12px 14px;color:rgba(240,231,212,.5);font-size:13px}
+
+/* duty sheet preview */
+.gd-pdf-modal{width:min(94vw,980px);height:min(88vh,1000px);display:flex;flex-direction:column;
+  background:var(--paper);border-radius:8px;overflow:hidden;box-shadow:var(--shadow);border:1px solid rgba(0,0,0,.08)}
+.gd-pdf-body{flex:1;overflow-y:auto;background:var(--paper-2);padding:18px;display:flex;flex-direction:column;
+  align-items:center;gap:14px}
+.gd-pdf-page{width:100%;max-width:900px;height:auto;background:#fff;border:1px solid var(--line);
+  box-shadow:0 10px 26px -18px rgba(0,0,0,.5)}
+table.gd-sum tr.gd-sum-sub-total td{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;
+  border-top:1.5px solid var(--line)}
+
+/* dropdown search box */
+.gd-dd-search{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid rgba(240,231,212,.14);
+  color:rgba(240,231,212,.55)}
+.gd-dd-search input{flex:1;min-width:0;border:0;background:transparent;font:inherit;font-size:13.5px;
+  color:var(--manila);outline:none}
+.gd-dd-search input::placeholder{color:rgba(240,231,212,.4)}
+
+/* PDF preview uses the browser's own viewer */
+.gd-pdf-body{padding:0;background:var(--petrol-d)}
+.gd-pdf-frame{width:100%;height:100%;border:0;background:#fff;flex:1}
+.gd-pdf-modal .gd-sheet-head{flex-wrap:nowrap}
+.gd-pdf-modal .gd-sheet-head h2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* utilities the desk markup relies on */
+.gd-app .hidden{display:none}
+.font-oswald{font-family:var(--font-oswald)}
+
+/* ==========================================================================
+   SITE LOOK — card headers, controls and the costing tool's own classes.
+   `.gd-app` prefixes win over that tool's embedded stylesheet.
+   ========================================================================== */
+
+/* headers of every panel (both tool families) */
+.gd-app .gd-sheet-head,
+.gd-app .sheet-head{background:var(--head);border-bottom:1px solid var(--line)}
+.gd-app .gd-sheet,
+.gd-app .sheet{background:var(--paper);border:1px solid var(--line);border-radius:1.25rem;
+  box-shadow:var(--shadow)}   /* no backdrop-filter: it would trap floating panels inside the card */
+.gd-app .gd-sheet-head h2,.gd-app .sheet-head h2{font-weight:800;letter-spacing:-.01em}
+.gd-app .gd-tag,.gd-app .tag{color:var(--stamp-soft);font-weight:800}
+html.light-mode .gd-app .gd-tag,html.light-mode .gd-app .tag{color:var(--stamp)}
+
+/* masthead */
+.gd-app .gd-mast,.gd-app .mast{border-bottom:1px solid var(--line)}
+.gd-app .gd-mast h1,.gd-app .mast h1{font-weight:800;letter-spacing:-.03em;color:var(--ink)}
+.gd-app .gd-lede,.gd-app .lede{color:var(--ink-soft)}
+.gd-app .gd-bn,.gd-app .bn{color:var(--ink-faint)}
+.gd-app .gd-ticket,.gd-app .ticket{border:1px solid var(--line);border-radius:.9rem;color:var(--ink-soft);
+  background:var(--paper-2);font-weight:800}
+.gd-app .gd-seal,.gd-app .seal{border-color:var(--stamp);background:rgba(185,28,28,.12);box-shadow:0 0 0 2px rgba(185,28,28,.18)}
+.gd-app .gd-seal b,.gd-app .seal b{color:var(--ink)}
+.gd-app .gd-seal small,.gd-app .seal small{color:var(--stamp-soft)}
+
+/* dropzones / inner panels */
+.gd-app .gd-drop,.gd-app .drop{background:var(--paper-2);border:1.5px dashed var(--line);border-radius:1rem}
+.gd-app .gd-drop:hover,.gd-app .drop:hover{border-color:var(--stamp);background:rgba(185,28,28,.06)}
+.gd-app .gd-drop.has,.gd-app .drop.has{border-style:solid;border-color:var(--green);background:var(--green-bg)}
+.gd-app .gd-drop.is-drag,.gd-app .drop.drag{border-color:var(--green);background:var(--green-bg)}
+.gd-app .gd-drop h3,.gd-app .drop h3{color:var(--ink);font-weight:700}
+.gd-app .gd-drop p,.gd-app .drop p{color:var(--ink-soft)}
+.gd-app .gd-hint,.gd-app .hint{color:var(--ink-faint)}
+.gd-app .gd-step,.gd-app .step{background:var(--stamp);color:#fff;font-weight:800;
+  box-shadow:0 6px 16px -6px rgba(185,28,28,.8)}
+.gd-app .gd-files,.gd-app .files{color:var(--green)}
+.gd-app .gd-none,.gd-app .none{color:var(--ink-faint)}
+
+/* buttons */
+.gd-app .gd-btn-primary,.gd-app .btn-primary{background:var(--stamp);color:#fff;border-radius:.9rem;
+  font-weight:800;letter-spacing:.06em;text-transform:uppercase;font-size:12.5px;
+  box-shadow:0 14px 30px -14px rgba(185,28,28,.9)}
+.gd-app .gd-btn-primary:hover:not(:disabled),.gd-app .btn-primary:hover:not(:disabled){background:var(--stamp-d)}
+.gd-app .gd-btn-ghost,.gd-app .btn-ghost,.gd-app .month-warn .mbtn{background:var(--paper-2);color:var(--ink);
+  border:1px solid var(--line);border-radius:.8rem;box-shadow:none;font-weight:700}
+.gd-app .gd-btn-ghost:hover:not(:disabled),.gd-app .btn-ghost:hover:not(:disabled),
+.gd-app .month-warn .mbtn:hover{background:var(--petrol-l);border-color:var(--stamp);color:var(--ink);box-shadow:none}
+.gd-app .gd-remove{background:var(--paper-2);border:1px solid var(--line);color:var(--ink-soft);border-radius:.6rem}
+.gd-app .gd-remove:hover{border-color:var(--red);color:var(--red);background:var(--red-bg)}
+
+/* inputs + selects */
+.gd-app .gd-field input,.gd-app .gd-field-col input,.gd-app .gd-field-col select,
+.gd-app .gd-dd-trigger,.gd-app .field input,.gd-app .brackets input,.gd-app .params input{
+  background:var(--paper-2);border:1px solid var(--line);color:var(--ink);border-radius:.7rem}
+.gd-app .gd-field input:focus,.gd-app .gd-field-col input:focus,.gd-app .gd-field-col select:focus,
+.gd-app .field input:focus,.gd-app .brackets input:focus{outline:none;border-color:var(--stamp)}
+.gd-app .gd-field-col select option{background:#101013;color:#fff}
+html.light-mode .gd-app .gd-field-col select option{background:#fff;color:#111827}
+.gd-app .gd-dd-panel{background:#101013;border:1px solid var(--line);border-radius:1rem}
+html.light-mode .gd-app .gd-dd-panel{background:#fff}
+.gd-app .gd-dd-item{color:var(--ink);border-bottom:1px solid var(--line-soft)}
+.gd-app .gd-dd-item:hover{background:var(--petrol-l)}
+.gd-app .gd-dd-item.is-on{background:rgba(185,28,28,.18);color:var(--ink);font-weight:800}
+.gd-app .gd-dd-item small{color:var(--ink-faint)}
+.gd-app .gd-dd-clear{color:var(--stamp-soft);border-bottom:1px solid var(--line)}
+.gd-app .gd-dd-clear:hover{background:rgba(185,28,28,.12)}
+.gd-app .gd-dd-search{border-bottom:1px solid var(--line);color:var(--ink-faint)}
+.gd-app .gd-dd-search input{color:var(--ink)}
+.gd-app .gd-dd-label{color:var(--ink-faint);font-weight:800;letter-spacing:.14em}
+
+/* month cards, duty rows, totals */
+.gd-app .gd-month{background:var(--paper-2);border:1px solid var(--line);border-radius:.9rem}
+.gd-app .gd-month.is-on{border-color:var(--green);background:var(--green-bg)}
+.gd-app .gd-month-name{color:var(--ink);font-weight:800}
+.gd-app .gd-month.is-on .gd-month-name{color:var(--green)}
+.gd-app .gd-duty-row{background:var(--paper-2);border:1px solid var(--line);border-radius:.8rem;color:var(--ink)}
+.gd-app .gd-duty-row:hover{border-color:var(--stamp)}
+.gd-app .gd-duty-row.is-on{border-color:var(--green);background:var(--green-bg)}
+.gd-app .gd-duty-code{color:var(--ink-soft)}
+.gd-app .gd-duty-amt{color:var(--ink);font-weight:800}
+.gd-app .gd-duty-row.is-on .gd-duty-amt{color:var(--green)}
+.gd-app table.gd-sum td{border-bottom:1px solid var(--line-soft);color:var(--ink)}
+.gd-app table.gd-sum tr.gd-sum-total td{border-top:2px solid var(--line)}
+.gd-app table.gd-sum tr.gd-sum-total .gd-sum-amt{color:var(--stamp-soft)}
+html.light-mode .gd-app table.gd-sum tr.gd-sum-total .gd-sum-amt{color:var(--stamp)}
+
+/* notices */
+.gd-app .gd-error,.gd-app .month-warn{background:var(--red-bg);border:1px solid var(--red);border-radius:.9rem;color:var(--ink)}
+.gd-app .gd-error b,.gd-app .month-warn b{color:var(--red)}
+.gd-app .gd-warn,.gd-app .dup-note{background:var(--amber-bg);border:1px solid var(--amber);border-radius:.9rem;color:var(--ink)}
+.gd-app .gd-warn b{color:var(--amber)}
+.gd-app .gd-status.ok{color:var(--green)}
+.gd-app .gd-status.done{color:var(--stamp-soft)}
+.gd-app .gd-note{color:var(--ink-faint)}
+
+/* costing tool leftovers */
+.gd-app .mode-tab.on{background:var(--stamp);color:#fff;border-color:var(--stamp)}
+.gd-app .brackets th{background:var(--head);color:var(--ink-soft)}
+.gd-app table.manifest{color:var(--ink)}
+.gd-app table.manifest thead th{background:var(--head);color:var(--ink-soft)}
+.gd-app table.manifest tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
+html.light-mode .gd-app table.manifest tbody tr:nth-child(even){background:rgba(0,0,0,.02)}
+.gd-app .sep-row td{background:var(--head)!important}
+.gd-app .stat{background:var(--paper-2);border:1px solid var(--line);border-radius:.9rem}
+.gd-app .log-box{background:#08080a;border:1px solid var(--line);border-radius:1rem}
+html.light-mode .gd-app .log-box{background:#111827}
+.gd-app footer{color:var(--ink-faint)}
+
+/* overlays */
+.gd-app .gd-overlay{background:rgba(5,5,6,.72);backdrop-filter:blur(6px)}
+.gd-app .gd-overlay-card,.gd-app .gd-pdf-modal{background:var(--petrol-d);border:1px solid var(--line);border-radius:1.25rem}
+html.light-mode .gd-app .gd-overlay-card,html.light-mode .gd-app .gd-pdf-modal{background:#fff}
+.gd-app .gd-pdf-body{background:var(--petrol)}
+.gd-app .gd-progress{background:var(--paper-2);border:1px solid var(--line)}
+.gd-app .gd-progress>div{background:var(--stamp)}
+
+/* ==========================================================================
+   LEFT PANEL — same language as the site's navigation
+   ========================================================================== */
+.gd-app .gd-side{background:rgba(255,255,255,.03);border-right:1px solid var(--line);backdrop-filter:blur(14px)}
+html.light-mode .gd-app .gd-side{background:rgba(0,0,0,.02)}
+.gd-app .gd-side::before{opacity:.05}
+.gd-app .gd-side-head{border-bottom:1px solid var(--line)}
+.gd-app .gd-brand-seal{border:2px solid var(--stamp);background:rgba(185,28,28,.14);border-radius:.85rem;transform:none}
+.gd-app .gd-brand-seal b{color:var(--ink);font-weight:800}
+.gd-app .gd-brand-text strong{color:var(--ink);font-weight:800;letter-spacing:-.02em}
+.gd-app .gd-brand-text span{color:var(--ink-faint);letter-spacing:.18em}
+.gd-app .gd-toggle{background:var(--paper-2);border:1px solid var(--line);color:var(--ink-soft);border-radius:.7rem}
+.gd-app .gd-toggle:hover{background:var(--petrol-l);border-color:var(--stamp);color:var(--ink)}
+.gd-app .gd-sec-label{color:var(--ink-faint);font-weight:800;letter-spacing:.2em}
+.gd-app .gd-nav-item{color:var(--ink-soft);border-radius:.85rem;font-weight:700}
+.gd-app .gd-nav-item:hover{background:var(--petrol-l);color:var(--ink)}
+.gd-app .gd-nav-item.is-active{background:rgba(185,28,28,.14);color:var(--ink)}
+.gd-app .gd-nav-item.is-active::before{background:var(--stamp)}
+.gd-app .gd-nav-item.is-active .gd-nav-text strong{color:var(--stamp-soft)}
+html.light-mode .gd-app .gd-nav-item.is-active .gd-nav-text strong{color:var(--stamp)}
+.gd-app .gd-nav-ico{background:var(--paper-2);border:1px solid var(--line);color:var(--ink-soft);border-radius:.7rem}
+.gd-app .gd-nav-item.is-active .gd-nav-ico{background:var(--stamp);border-color:var(--stamp);color:#fff}
+.gd-app .gd-nav-text small{color:var(--ink-faint)}
+.gd-app .gd-nav-item.is-active .gd-nav-text small{color:var(--ink-soft)}
+.gd-app .gd-side-foot{border-top:1px solid var(--line);color:var(--ink-faint)}
+.gd-app .gd-sec-gap{background:transparent}
+.gd-app .gd-side.is-collapsed .gd-sec-gap{background:var(--line)}
+.gd-app .gd-scrim{background:rgba(5,5,6,.6)}
+
+/* the costing tool styles its masthead text with hard-coded cream values */
+.gd-app .mast .lede{color:var(--ink-soft)}
+.gd-app .mast .bn{color:var(--ink-faint)}
+.gd-app .mast{border-bottom:1px solid var(--line)}
+.gd-app .seal b{color:var(--ink)}
+.gd-app .ticket{color:var(--ink-soft)}
+.gd-app .foot,.gd-app .foot *{color:var(--ink-faint)}
+.gd-app .mast::before{opacity:.05}
+
+/* the "back" row shown when a dropdown drills into a car's duty list */
+.gd-dd-back{display:flex;align-items:center;gap:8px;width:100%;padding:11px 14px;border:0;cursor:pointer;
+  font:inherit;font-size:12.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--ink-soft);background:transparent;border-bottom:1px solid var(--line)}
+.gd-dd-back:hover{background:var(--petrol-l);color:var(--ink)}
+.gd-app .gd-dd-back{color:var(--ink-soft)}
+.gd-dd-item.gd-dd-duty{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.gd-dd-item.gd-dd-duty span{font-family:var(--mono-stack);font-size:12px}
+.gd-dd-item.gd-dd-duty strong{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:14px}
+.gd-app .gd-dd-item.gd-dd-duty.is-on strong{color:var(--green)}
+
+/* the calculator embedded on the home page: the desk's controls, none of its page styling */
+.gd-app.gd-embed{min-height:0;background:none;background-attachment:initial;color:inherit;font-family:inherit}
+.gd-app.gd-embed .gd-dd-label{color:inherit;opacity:.6}
+
+/* ==========================================================================
+   Contrast fixes found by the colour audit
+   ========================================================================== */
+/* the costing tool's footnotes were cream on cream in light mode */
+.gd-app .notes{color:var(--ink-soft)}
+.gd-app .notes b{color:var(--ink)}
+/* red accents as text need the brighter red on the dark theme */
+.gd-app .sheet-head .tag{color:var(--stamp-soft)}
+.gd-app details.adv summary{color:var(--stamp-soft)}
+html.light-mode .gd-app .sheet-head .tag,
+html.light-mode .gd-app details.adv summary{color:var(--stamp)}
+.gd-app .seal small{color:var(--stamp-soft)}
+html.light-mode .gd-app .seal small{color:var(--stamp)}
+
+/* ==========================================================================
+   Input boxes and placeholders (the first audit only measured page text)
+   ========================================================================== */
+/* the costing tool paints its number boxes #fff while the text follows the theme — white on
+   white in dark mode. A stronger selector puts them on the theme's own surface. */
+.gd-app .field input[type=number],
+.gd-app .field input[type=text]{background:var(--paper-2);color:var(--ink);border:1px solid var(--line)}
+/* placeholders: readable hints in both themes */
+.gd-app .gd-dd-search input::placeholder{color:var(--ink-faint)}
+.gd-app .gd-field-col input::placeholder,
+.gd-app .field input::placeholder{color:var(--ink-faint)}

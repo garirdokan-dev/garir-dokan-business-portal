@@ -5,6 +5,7 @@ import { BusinessDocument, DocumentType, PaymentEntry, Asset, AssetType, HeaderS
 import { DOC_TYPES_CONFIG } from '../constants';
 import AssetLibrary from './AssetLibrary';
 import { getTypePreferences, saveTypePreferences } from '../utils/storage';
+import { getTodayDateString } from '../utils/date';
 
 interface DocumentFormProps {
   initialData: Partial<BusinessDocument>;
@@ -84,7 +85,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
     id: Math.random().toString(36).substr(2, 9),
     type: DocumentType.INVOICE,
     docNumber: '',
-    date: new Date().toISOString().split('T')[0],
+    date: getTodayDateString(),
     clientName: '',
     clientAddress: '',
     clientPhone: '',
@@ -157,7 +158,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
   const addPayment = () => {
     const newPayment: PaymentEntry = {
       id: Math.random().toString(36).substr(2, 9),
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayDateString(),
       amount: 0,
       note: 'CASH'
     };
@@ -185,7 +186,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
     onSave(formData as BusinessDocument);
   };
 
-  const inputClass = "w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-sm font-medium outline-none focus:border-red-700/50 focus:bg-white/[0.08] text-white placeholder:text-white/20 transition-all focus:ring-4 focus:ring-red-700/10";
+  const inputClass = "w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-sm font-medium outline-none focus:border-red-700/50 focus:bg-white/[0.08] text-white placeholder:text-gray-500 transition-all focus:ring-4 focus:ring-red-700/10";
   const labelClass = "block text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-2 ml-1";
 
   const ToggleSwitch = ({ checked, onChange }: { checked: boolean, onChange: () => void }) => (
@@ -204,7 +205,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
       </div>
       <div>
         <h3 className="text-sm font-black text-white uppercase tracking-widest">{title}</h3>
-        {subtitle && <p className="text-[10px] font-bold text-gray-600 uppercase tracking-tighter mt-0.5">{subtitle}</p>}
+        {subtitle && <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter mt-0.5">{subtitle}</p>}
       </div>
     </div>
   );
@@ -229,7 +230,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
       <div className="bg-black/20 px-4 md:px-10 py-4 md:py-8 flex justify-between items-center text-white shrink-0 border-b border-white/5">
         <div className="flex items-center gap-3 md:gap-6">
           <div className="w-10 h-10 md:w-14 md:h-14 bg-red-700 rounded-xl md:rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(185,28,28,0.4)] ring-4 ring-red-700/10 transition-all group-hover:rotate-12 shrink-0">
-            {React.cloneElement(currentTypeConfig.icon as React.ReactElement, { className: 'w-5 h-5 md:w-6 md:h-6 text-white text-white-always' })}
+            {React.cloneElement(currentTypeConfig.icon as React.ReactElement<{ className?: string }>, { className: 'w-5 h-5 md:w-6 md:h-6 text-white text-white-always' })}
           </div>
           <div className="min-w-0">
             <h2 className="text-base md:text-2xl font-black uppercase tracking-tighter leading-none mb-1 md:mb-1.5 truncate">
@@ -344,7 +345,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
                       onChange={(e) => setFormData({...formData, vehicleTitleSize: parseInt(e.target.value)})} 
                       className="flex-1 accent-red-700 h-1.5 bg-white/5 rounded-lg cursor-pointer appearance-none" 
                     />
-                    <span className="text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">{formData.vehicleTitleSize ?? 18}px</span>
+                    <span className="text-[10px] font-black text-red-500 bg-red-700/10 px-2 py-0.5 rounded-md">{formData.vehicleTitleSize ?? 18}px</span>
                   </div>
                 </div>
 
@@ -519,7 +520,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
                         onChange={(e) => setFormData({...formData, vehicleTitleSize: parseInt(e.target.value)})} 
                         className="flex-1 accent-red-700 h-1.5 bg-white/5 rounded-lg cursor-pointer appearance-none" 
                       />
-                      <span className="text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">{formData.vehicleTitleSize ?? 18}px</span>
+                      <span className="text-[10px] font-black text-red-500 bg-red-700/10 px-2 py-0.5 rounded-md">{formData.vehicleTitleSize ?? 18}px</span>
                     </div>
                   </div>
                 </div>
@@ -580,7 +581,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
                      <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest shrink-0">Header Typography</span>
                      <div className="flex items-center gap-3 flex-1 min-w-[200px]">
                        <input type="range" min="10" max="40" value={formData.vehicleTitleSize ?? 18} onChange={(e) => setFormData({...formData, vehicleTitleSize: parseInt(e.target.value)})} className="flex-1 accent-red-700 h-1.5 bg-white/5 rounded-lg cursor-pointer appearance-none" />
-                       <span className="text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">{formData.vehicleTitleSize ?? 18}px</span>
+                       <span className="text-[10px] font-black text-red-500 bg-red-700/10 px-2 py-0.5 rounded-md">{formData.vehicleTitleSize ?? 18}px</span>
                      </div>
                   </div>
                 )}

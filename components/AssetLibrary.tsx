@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { offerUndo } from './UndoToast.tsx';
 // Added Edit3 to the imports to resolve the "Cannot find name 'Edit3'" error
 import { 
   Trash2, 
@@ -70,11 +71,18 @@ const AssetLibrary: React.FC<AssetLibraryProps> = ({ onClose, onSelect, selectio
   };
 
   const handleDelete = async (id: string) => {
+    const removed = assets.find(a => a.id === id);
     if (confirm('Delete this asset from library?')) {
       setIsLoading(true);
       const updated = await deleteAsset(id);
       setAssets(updated);
       setIsLoading(false);
+      if (removed) {
+        offerUndo(`${removed.name || 'Asset'} deleted`, async () => {
+          const restored = await saveAsset(removed);
+          setAssets(restored);
+        });
+      }
     }
   };
 

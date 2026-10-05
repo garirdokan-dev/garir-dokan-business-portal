@@ -6,6 +6,7 @@ import {
   Globe, Link, ExternalLink, Monitor 
 } from 'lucide-react';
 import { BusinessDocument, DocumentType, FooterSettings, HeaderSettings } from '../types';
+import { formatDisplayDate } from '../utils/date';
 
 interface DocumentPreviewProps {
   document: BusinessDocument;
@@ -294,7 +295,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
                           <tr>
                             <td style={{ textAlign: 'right', padding: '3px 0', fontWeight: 'bold' }}>
                               <span style={{ marginRight: '8px' }}>DATE:</span>
-                              <span>{new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}</span>
+                              <span>{formatDisplayDate(date)}</span>
                             </td>
                           </tr>
                           <tr>
@@ -434,7 +435,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
                       <div style={{ color: '#4b5563', marginBottom: '2px' }}>Invoice No:</div>
                       <div style={{ fontWeight: 'bold', fontSize: '18px', color: '#000000', marginBottom: '15px' }}>#{docNumber}</div>
                       <div style={{ color: '#4b5563', marginBottom: '2px' }}>Date Issued:</div>
-                      <div style={{ fontWeight: 'bold', color: '#000000', marginBottom: document.garageNumber ? '15px' : '0' }}>{new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+                      <div style={{ fontWeight: 'bold', color: '#000000', marginBottom: document.garageNumber ? '15px' : '0' }}>{formatDisplayDate(date, 'long')}</div>
                       {document.garageNumber && (
                         <>
                           <div style={{ color: '#4b5563', marginBottom: '2px' }}>Garage Number:</div>
@@ -744,7 +745,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
                       {acName && <div className="mt-1 text-black font-bold">A/C: {acName}</div>}
                     </td>
                     <td style={{ width: '35%', verticalAlign: 'top', textAlign: 'right' }}>
-                      {!isHidden('date') && <div>Date: {new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}</div>}
+                      {!isHidden('date') && <div>Date: {formatDisplayDate(date)}</div>}
                     </td>
                   </tr>
                 </tbody>
@@ -933,7 +934,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
                           <tr>
                             <td style={{ textAlign: 'right', padding: '3px 0', fontWeight: 'bold' }}>
                               <span style={{ marginRight: '8px' }}>DATE:</span>
-                              <span>{new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}</span>
+                              <span>{formatDisplayDate(date)}</span>
                             </td>
                           </tr>
                           <tr>
@@ -1022,7 +1023,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, containerRe
                           <tr key={p.id} style={{ borderBottom: index === payments.length - 1 ? 'none' : '1px solid #e5e7eb' }}>
                             <td className="py-3 px-1.5 text-[13px] text-black" style={{ width: '63.6%', textAlign: 'left', verticalAlign: 'top' }}>
                               <div style={{ width: '145px', textAlign: 'center' }}>
-                                {new Date(p.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
+                                {formatDisplayDate(p.date)}
                               </div>
                             </td>
                             <td className="py-3 px-3 text-right text-black font-bold text-[13px]" style={{ width: '36.4%', textAlign: 'right', verticalAlign: 'top' }}>

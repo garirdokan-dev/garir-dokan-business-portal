@@ -1,6 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import PricingDesk from './pricing/PricingDesk';
+import { SyncStatus, SaveWarning, SyncFloatingBadge } from './components/SyncStatus.tsx';
+import { HomePriceCalculator } from './components/HomePriceCalculator.tsx';
+import { UndoToast, offerUndo } from './components/UndoToast.tsx';
+import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { 
   Search, 
   Plus, 
@@ -32,11 +37,13 @@ import {
   Image as ImageIcon,
   LogOut,
   Edit3,
-  Minus
-} from 'lucide-react';
+  Minus, Calculator } from 'lucide-react';
 import { BusinessDocument, DocumentType, FooterSettings, HeaderSettings, HeroSettings } from './types.ts';
 import { DOC_TYPES_CONFIG } from './constants.tsx';
-import { addOrUpdateDocument, loadDocuments, deleteDocument, loadFooterSettings, loadAllHeaderSettings, loadHeroSettings } from './utils/storage.ts';
+import { addOrUpdateDocument, loadDocuments, deleteDocument, loadFooterSettings, loadAllHeaderSettings, loadHeroSettings,
+  getCachedDocuments,
+} from './utils/storage.ts';
+import { isSupabaseConfigured } from './utils/supabase.ts';
 import DocumentForm from './components/DocumentForm.tsx';
 import DocumentPreview from './components/DocumentPreview.tsx';
 import ProInvoiceGenerator from './components/ProInvoiceGenerator.tsx';
@@ -111,7 +118,7 @@ const App: React.FC = () => {
   const [previewingDoc, setPreviewingDoc] = useState<BusinessDocument | null>(null);
   const [draftDoc, setDraftDoc] = useState<Partial<BusinessDocument> | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'landing' | 'list' | 'assets'>('landing');
+  const [viewMode, setViewMode] = useState<'landing' | 'list' | 'assets' | 'pricing'>('landing');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showGlobalSettings, setShowGlobalSettings] = useState(false);
   const [activeType, setActiveType] = useState<DocumentType | null>(null);
@@ -135,6 +142,9 @@ const App: React.FC = () => {
   const navigate = useNavigate();
 
   const lastPathname = useRef(location.pathname);
+  // the first run must apply whatever address the browser opened, otherwise a direct link like
+  // /records or /pricing-desk is ignored whenever the data happens to load instantly
+  const firstRun = useRef(true);
   const lastTargetPath = useRef('/');
   const wasLoading = useRef(isLoading);
 
@@ -153,6 +163,8 @@ const App: React.FC = () => {
     currentTargetPath = `/records`;
   } else if (viewMode === 'assets') {
     currentTargetPath = `/assets`;
+  } else if (viewMode === 'pricing') {
+    currentTargetPath = `/pricing-desk`;
   }
 
   useEffect(() => {
@@ -161,7 +173,7 @@ const App: React.FC = () => {
     const stateChanged = currentTargetPath !== lastTargetPath.current;
     const finishedLoading = wasLoading.current && !isLoading;
 
-    if (pathChanged || finishedLoading) {
+    if (pathChanged || finishedLoading || firstRun.current) {
       if (path === '/') {
         setEditingDoc(null);
         setShowProGenerator(false);
@@ -176,6 +188,12 @@ const App: React.FC = () => {
         setShowGlobalSettings(false);
       } else if (path === '/assets') {
         setViewMode('assets');
+        setEditingDoc(null);
+        setShowProGenerator(false);
+        setPreviewingDoc(null);
+        setShowGlobalSettings(false);
+      } else if (path === '/pricing-desk') {
+        setViewMode('pricing');
         setEditingDoc(null);
         setShowProGenerator(false);
         setPreviewingDoc(null);
@@ -216,9 +234,12 @@ const App: React.FC = () => {
         }
       }
       lastPathname.current = path;
+      firstRun.current = false;
     }
 
-    if (stateChanged && !pathChanged && !isLoading) {
+    // the address follows the view straight away; waiting for the initial load used to leave the
+    // address behind for a few seconds on a slow connection
+    if (stateChanged && !pathChanged) {
       if (path !== currentTargetPath) {
         navigate(currentTargetPath);
         lastPathname.current = currentTargetPath;
@@ -363,12 +384,24 @@ const App: React.FC = () => {
   useEffect(() => {
     const initData = async () => {
       startLoading();
+
+      // Show what is already on this device at once. A slow or unreachable cloud used to hold the
+      // whole interface behind the loader; now it only refreshes what is already on screen.
+      const cached = getCachedDocuments();
+      if (cached.length) {
+        setDocuments(cached);
+        finishLoading();
+      }
+
       try {
-        const docs = await loadDocuments();
+        // independent of each other, so they run together instead of one after another
+        const [docs] = await Promise.all([
+          loadDocuments(),
+          fetchFooter(),
+          fetchHeader(),
+          fetchHero(),
+        ]);
         setDocuments(docs || []);
-        await fetchFooter();
-        await fetchHeader();
-        await fetchHero();
       } catch (err) {
         console.warn("Initialization failed (likely database down):", err);
       } finally {
@@ -397,6 +430,23 @@ const App: React.FC = () => {
     return () => clearInterval(textInterval);
   }, []);
 
+  /** Open the Pricing Desk with its Price Calculator selected. */
+  const openPriceDesk = () => {
+    try { window.localStorage.setItem('gd.tool', 'PRICE'); } catch { /* private mode */ }
+    window.dispatchEvent(new CustomEvent('gd:open-tool', { detail: 'PRICE' }));
+    setViewMode('pricing');
+    setActiveType(null);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  };
+
+  /** Slide down to the calculator on this page. */
+  const scrollToPriceCalculator = () => {
+    setViewMode('landing');
+    window.setTimeout(() => {
+      document.getElementById('home-price-calculator')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+  };
+
   const handleSave = async (doc: BusinessDocument) => {
     const isDuplicate = documents.some(d => 
       d.docNumber === doc.docNumber && d.id !== doc.id && doc.docNumber.trim() !== ''
@@ -419,21 +469,62 @@ const App: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
+    const removed = documents.find(d => d.id === id);
     if (confirm('Are you sure you want to delete this document?')) {
       startLoading();
       const updated = await deleteDocument(id);
       setDocuments(updated);
       finishLoading();
+      // a short window to put it back exactly as it was — same id, number and dates
+      if (removed) {
+        offerUndo(`${removed.docNumber || 'Document'} deleted`, async () => {
+          const restored = await addOrUpdateDocument(removed);
+          setDocuments(restored);
+        });
+      }
     }
   };
 
 
 
+  // Everything about a document that is worth searching, as one lowercase string.
+  // Dates are written out in several shapes (and in Bangla) so a month name or 09-2026 both hit.
+  const BN_MONTHS = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+  const EN_MONTHS = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+
+  const searchableText = (doc: BusinessDocument): string => {
+    const parts: (string | number | undefined)[] = [
+      doc.docNumber, doc.clientName, doc.clientPhone, doc.clientAddress,
+      doc.vehicleTitle, doc.chassisNumber, doc.engineNumber, doc.brand, doc.model,
+      doc.yearModel, doc.color, doc.garageNumber, doc.vehiclePrice, doc.date,
+    ];
+    const d = doc.date ? new Date(doc.date) : null;
+    if (d && !isNaN(d.getTime())) {
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = String(d.getFullYear());
+      parts.push(
+        `${day}-${month}-${year}`, `${day}/${month}/${year}`, `${month}-${year}`, `${month}/${year}`,
+        EN_MONTHS[d.getMonth()], EN_MONTHS[d.getMonth()].slice(0, 3), BN_MONTHS[d.getMonth()], year,
+      );
+    }
+    return parts.filter(Boolean).join(' ').toLowerCase();
+  };
+
+  // "inv 1" finds INV-000001: each word must appear, and separators are ignored on a second pass
+  const flatten = (t: string) => t.replace(/[^a-z0-9\u0980-\u09FF]+/gi, '');
+
+  const matchesQuery = (doc: BusinessDocument, query: string): boolean => {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    const hay = searchableText(doc);
+    const flatHay = flatten(hay);
+    return q.split(/\s+/).filter(Boolean).every(word => hay.includes(word) || flatHay.includes(flatten(word)));
+  };
+
   const filteredDocs = documents.filter(doc => {
-    const matchesSearch = doc.clientName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          doc.docNumber.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = activeType ? doc.type === activeType : true;
-    return matchesSearch && matchesType;
+    return matchesType && matchesQuery(doc, searchQuery);
   }).sort((a, b) => b.createdAt - a.createdAt);
 
   const totalRecords = documents.length;
@@ -493,10 +584,14 @@ const App: React.FC = () => {
         </div>
       )}
 
+      {(editingDoc || showProGenerator || previewingDoc || showGlobalSettings) && <SyncFloatingBadge />}
+      <UndoToast />
+
       <nav className="fixed top-0 left-0 right-0 z-50 px-4 md:px-10 py-3 md:py-6 flex justify-between items-center backdrop-blur-md bg-black/20 border-b border-white/5 print:hidden no-print">
         <div className="flex items-center gap-2 md:gap-3 cursor-pointer" onClick={() => {setViewMode('landing'); setActiveType(null); setIsSidebarOpen(false);}}>
           <div className="w-8 h-8 md:w-10 md:h-10 bg-red-700 rounded-lg md:rounded-xl flex items-center justify-center font-black text-base md:text-xl shadow-lg shadow-red-700/30 text-white text-white-always">GD</div>
           <span className="text-base md:text-xl font-black tracking-tighter">Garir Dokan <span className="text-red-700 uppercase">Pro</span></span>
+          <div onClick={e => e.stopPropagation()}><SyncStatus /></div>
         </div>
         
         {/* Desktop Navigation */}
@@ -504,6 +599,8 @@ const App: React.FC = () => {
           <button onClick={() => {setViewMode('landing'); setActiveType(null);}} className={`text-sm font-bold uppercase tracking-widest transition-colors ${viewMode === 'landing' ? 'text-red-600' : 'text-gray-400 hover:text-white'}`}>Home</button>
           <button onClick={() => {setViewMode('assets');}} className={`text-sm font-bold uppercase tracking-widest transition-colors ${viewMode === 'assets' ? 'text-red-600' : 'text-gray-400 hover:text-white'}`}>Asset Library</button>
           <button onClick={() => {setViewMode('list'); setActiveType(null);}} className={`text-sm font-bold uppercase tracking-widest transition-colors ${viewMode === 'list' ? 'text-red-600' : 'text-gray-400 hover:text-white'}`}>Records</button>
+          <div className="h-4 w-px bg-white/10"></div>
+          <button onClick={() => {setViewMode('pricing'); setActiveType(null);}} className={`text-sm font-bold uppercase tracking-widest transition-colors ${viewMode === 'pricing' ? 'text-red-600' : 'text-gray-400 hover:text-white'}`}>Pricing Desk</button>
           <div className="h-4 w-px bg-white/10"></div>
           <button 
             onClick={() => setShowGlobalSettings(true)}
@@ -561,6 +658,12 @@ const App: React.FC = () => {
             className={`flex items-center gap-4 text-sm font-black uppercase tracking-widest transition-colors ${viewMode === 'list' ? 'text-red-600' : 'text-gray-400'}`}
           >
             <FileText className="w-5 h-5" /> Records
+          </button>
+          <button 
+            onClick={() => {setViewMode('pricing'); setActiveType(null); setIsSidebarOpen(false);}} 
+            className={`flex items-center gap-4 text-sm font-black uppercase tracking-widest transition-colors ${viewMode === 'pricing' ? 'text-red-600' : 'text-gray-400'}`}
+          >
+            <Calculator className="w-5 h-5" /> Pricing Desk
           </button>
           <div className="h-px bg-white/5 w-full"></div>
           <button 
@@ -671,8 +774,8 @@ const App: React.FC = () => {
                   <button onClick={() => setViewMode('list')} className="w-full sm:w-auto bg-red-700 text-white px-8 sm:px-10 py-4 sm:py-5 rounded-2xl font-black flex items-center justify-center gap-3 shadow-2xl shadow-red-700/40 hover:bg-red-800 transition-all group/btn uppercase tracking-widest text-[10px] sm:text-xs">
                     View Inventory <ArrowRight className="w-5 h-5 group-hover/btn:translate-x-2 transition-transform" />
                   </button>
-                  <button className="w-full sm:w-auto bg-white/10 text-white px-8 sm:px-10 py-4 sm:py-5 rounded-2xl font-black border border-white/10 hover:bg-white/20 transition-all uppercase tracking-widest text-[10px] sm:text-xs">
-                    User Guide
+                  <button onClick={scrollToPriceCalculator} className="w-full sm:w-auto bg-white/10 text-white px-8 sm:px-10 py-4 sm:py-5 rounded-2xl font-black border border-white/10 hover:bg-white/20 transition-all uppercase tracking-widest text-[10px] sm:text-xs">
+                    Pricing Desk
                   </button>
                 </div>
               </div>
@@ -713,7 +816,7 @@ const App: React.FC = () => {
                       {type === DocumentType.CHALLAN && "Manage precise vehicle handover and item checks."}
                       {type === DocumentType.PRO_INVOICE && "High-impact visual documents for premium clients."}
                     </p>
-                    <div className="mt-auto opacity-40 group-hover:opacity-100 transition-all duration-700 text-red-700 group-hover:text-white/80 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                    <div className="mt-auto opacity-80 group-hover:opacity-100 transition-all duration-700 text-red-700 group-hover:text-white/80 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
                       View History <ArrowRight className="w-3.5 h-3.5" />
                     </div>
                   </div>
@@ -754,23 +857,29 @@ const App: React.FC = () => {
 
                   <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center justify-center lg:justify-start gap-4 sm:gap-6 md:gap-12 relative z-10 w-full lg:w-auto">
                     <div className="flex items-center gap-3 md:gap-4">
-                      <div className="w-2 h-2 rounded-full bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.8)] shrink-0"></div>
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Database Ready</span>
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${isSupabaseConfigured ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]' : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.8)] animate-pulse'}`}></div>
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+                        {isSupabaseConfigured ? 'Supabase Connected' : 'Supabase Disconnected'}
+                      </span>
                     </div>
                     <div className="flex items-center gap-3 md:gap-4">
-                      <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)] shrink-0"></div>
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Cloud Sync Active</span>
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${isSupabaseConfigured ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]' : 'bg-zinc-600'}`}></div>
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+                        {isSupabaseConfigured ? 'Cloud Sync Active' : 'Local Storage Mode'}
+                      </span>
                     </div>
                     <div className="flex items-center gap-3 md:gap-4">
                       <Globe className="w-4 h-4 text-gray-600 shrink-0" />
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 leading-tight">Global Region: AP-South</span>
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 leading-tight">
+                        {isSupabaseConfigured ? 'Remote Backend' : 'Awaiting New Supabase'}
+                      </span>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between sm:justify-start lg:justify-end w-full lg:w-auto relative z-10 pt-6 sm:pt-0 border-t border-white/5 sm:border-t-0 mt-2 sm:mt-0">
                     <div className="text-left lg:text-right">
-                      <p className="text-[9px] font-black text-gray-600 uppercase tracking-widest">Processor Load</p>
-                      <p className="text-xs font-bold text-red-700">0.02ms latency</p>
+                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Processor Load</p>
+                      <p className="text-xs font-bold text-red-500">0.02ms latency</p>
                     </div>
                     <div className="hidden sm:block h-10 w-px bg-white/10 mx-4"></div>
                     <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 group-hover:text-red-700 transition-colors shrink-0">
@@ -778,6 +887,11 @@ const App: React.FC = () => {
                     </div>
                   </div>
                </div>
+            </div>
+
+            {/* Price a car without leaving the home page — the Pricing Desk's calculator */}
+            <div id="home-price-calculator" className="max-w-[1800px] mx-auto mt-16 md:mt-24 mb-24 md:mb-32 scroll-mt-28">
+              <HomePriceCalculator onOpenDesk={openPriceDesk} />
             </div>
 
             {/* Business Intelligence Section with Background Image & Glassmorphism */}
@@ -805,7 +919,7 @@ const App: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-b from-white/[0.05] to-transparent pointer-events-none"></div>
                     
                     <h3 className="text-2xl md:text-6xl font-black uppercase tracking-tighter text-white drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
-                      Business <span className="text-red-700">Intelligence</span>
+                      Business <span className="text-red-600">Intelligence</span>
                     </h3>
                     <p className="text-gray-400 text-[9px] md:text-[12px] font-black uppercase tracking-[0.3em] md:tracking-[0.6em] mt-3 md:mt-4 opacity-70 group-hover:opacity-100 group-hover:text-red-100 transition-all duration-700">
                       Advanced Real-time Analytics Dashboard
@@ -830,12 +944,12 @@ const App: React.FC = () => {
                          <p className="text-red-700 text-[8px] sm:text-[10px] md:text-[11px] font-black uppercase tracking-widest sm:tracking-[0.4em] md:tracking-[0.5em]">Inventory Audit</p>
                       </div>
                       <h4 className="text-5xl sm:text-6xl md:text-8xl font-black tracking-tighter mb-6 group-hover:translate-x-2 transition-transform duration-700">
-                        {totalRecords.toString().padStart(2, '0')}<span className="text-xl sm:text-2xl md:text-3xl text-gray-500 ml-3 md:ml-5 font-bold tracking-normal opacity-50">Total Files</span>
+                        {totalRecords.toString().padStart(2, '0')}<span className="text-xl sm:text-2xl md:text-3xl text-gray-400 ml-3 md:ml-5 font-bold tracking-normal opacity-80">Total Files</span>
                       </h4>
                       <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden mb-4">
                         <div className="h-full bg-gradient-to-r from-red-900 to-red-600 animate-pulse" style={{width: '75%'}}></div>
                       </div>
-                      <p className="text-gray-600 text-[9px] md:text-[10px] font-bold uppercase tracking-widest leading-relaxed">Verified documents in active repository</p>
+                      <p className="text-gray-400 text-[9px] md:text-[10px] font-bold uppercase tracking-widest leading-relaxed">Verified documents in active repository</p>
                     </div>
                   </div>
 
@@ -854,7 +968,7 @@ const App: React.FC = () => {
                       <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden mb-4">
                         <div className="h-full bg-gradient-to-r from-red-900 to-red-600 animate-pulse" style={{width: '90%'}}></div>
                       </div>
-                      <p className="text-gray-600 text-[9px] md:text-[10px] font-bold uppercase tracking-widest leading-relaxed">Gross financial tracking of registered assets</p>
+                      <p className="text-gray-400 text-[9px] md:text-[10px] font-bold uppercase tracking-widest leading-relaxed">Gross financial tracking of registered assets</p>
                     </div>
                   </div>
                 </div>
@@ -877,7 +991,7 @@ const App: React.FC = () => {
                           <div className="text-3xl sm:text-4xl font-black tracking-tighter group-hover:scale-110 transition-transform origin-left text-white">
                             {count.toString().padStart(2, '0')}
                           </div>
-                          <p className="text-[8px] font-black text-gray-700 uppercase mt-3 tracking-[0.3em] group-hover:text-red-700 transition-colors">Records Audit</p>
+                          <p className="text-[8px] font-black text-gray-400 uppercase mt-3 tracking-[0.3em] group-hover:text-red-500 transition-colors">Records Audit</p>
                         </div>
                       );
                     })}
@@ -890,12 +1004,12 @@ const App: React.FC = () => {
           <footer className="px-6 md:px-20 py-16 md:py-24 border-t border-white/5 bg-[#0a0a0b] flex flex-col items-center">
             <div className="flex flex-col md:flex-row items-center gap-4 mb-10">
               <div className="w-12 h-12 bg-red-700 rounded-2xl flex items-center justify-center font-black text-2xl shadow-xl shadow-red-700/20 text-white text-white-always">GD</div>
-              <span className="text-2xl font-black tracking-tighter text-center md:text-left">Garir Dokan</span>
+              <span className="text-2xl font-black tracking-tighter text-center md:text-left">Garir Dokan <span className="text-red-700 uppercase">Pro</span></span>
             </div>
-            <p className="text-gray-600 text-[10px] md:text-[11px] font-black uppercase tracking-[0.3em] md:tracking-[0.5em] text-center max-w-2xl leading-loose">
+            <p className="text-gray-400 text-[10px] md:text-[11px] font-black uppercase tracking-[0.3em] md:tracking-[0.5em] text-center max-w-2xl leading-loose">
               Advanced Document Infrastructure for Automotive Trading • Importers • Dealers
             </p>
-            <div className="mt-16 text-gray-800 text-[9px] md:text-[11px] font-black uppercase tracking-[0.2em] text-center">© 2026 GARIR DOKAN • ALL RIGHTS RESERVED</div>
+            <div className="mt-16 text-gray-400 text-[9px] md:text-[11px] font-black uppercase tracking-[0.2em] text-center">© 2026 GARIR DOKAN PRO • ALL RIGHTS RESERVED</div>
           </footer>
         </div>
       )}
@@ -906,12 +1020,20 @@ const App: React.FC = () => {
         </div>
       )}
 
+      {viewMode === 'pricing' && (
+        <div className="animate-in fade-in duration-500">
+          <ErrorBoundary area="Pricing Desk" onReset={() => setViewMode('landing')}>
+            <PricingDesk />
+          </ErrorBoundary>
+        </div>
+      )}
+
       {viewMode === 'list' && (
         <div className="pt-24 md:pt-32 px-4 md:px-10 min-h-screen flex flex-col pb-20">
           <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 md:mb-10">
             <div className="animate-in fade-in duration-500">
               <div className="flex items-center gap-3 mb-2">
-                 <button onClick={() => {setViewMode('landing'); setActiveType(null);}} className="text-gray-600 hover:text-red-600 transition-colors uppercase text-[10px] font-black tracking-widest">Dashboard</button>
+                 <button onClick={() => {setViewMode('landing'); setActiveType(null);}} className="text-gray-400 hover:text-red-500 transition-colors uppercase text-[10px] font-black tracking-widest">Dashboard</button>
                  <ChevronRight className="w-3 h-3 text-gray-700" />
                  <span className="text-red-700 uppercase text-[10px] font-black tracking-widest">Record Archive</span>
               </div>
@@ -922,8 +1044,8 @@ const App: React.FC = () => {
                  <Search className="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-red-700 transition-colors" />
                  <input 
                    type="text" 
-                   placeholder="Search ID, Client or Vehicle..." 
-                   className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-sm font-bold focus:border-red-700/50 focus:bg-white/10 outline-none transition-all placeholder:text-gray-600"
+                   placeholder="Search ID, client, vehicle, chassis or date..." 
+                   className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-sm font-bold focus:border-red-700/50 focus:bg-white/10 outline-none transition-all placeholder:text-gray-500"
                    value={searchQuery}
                    onChange={(e) => setSearchQuery(e.target.value)}
                  />
@@ -982,6 +1104,7 @@ const App: React.FC = () => {
                     <th className="px-6 md:px-12 py-6 md:py-8">Category</th>
                     <th className="px-6 md:px-12 py-6 md:py-8">Document / ID</th>
                     <th className="px-6 md:px-12 py-6 md:py-8">Recipient</th>
+                    <th className="px-6 md:px-12 py-6 md:py-8">Chassis No</th>
                     <th className="px-6 md:px-12 py-6 md:py-8">Valuation</th>
                     <th className="px-6 md:px-12 py-6 md:py-8 text-right">Operations</th>
                   </tr>
@@ -999,11 +1122,15 @@ const App: React.FC = () => {
                       </td>
                       <td className="px-6 md:px-12 py-5 md:py-7">
                         <p className="text-sm md:text-base font-black text-white group-hover/row:text-red-700 transition-colors">{doc.docNumber}</p>
-                        <p className="text-[10px] font-bold text-gray-600 uppercase mt-1">Ref No: {doc.id.slice(0,6)}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase mt-1">Ref No: {doc.id.slice(0,6)}</p>
                       </td>
                       <td className="px-6 md:px-12 py-5 md:py-7">
                         <p className="text-xs md:text-sm font-bold text-gray-200 uppercase tracking-tight">{doc.clientName}</p>
-                        <p className="text-[10px] text-gray-600 font-bold mt-1 max-w-[200px] truncate uppercase">{doc.vehicleTitle}</p>
+                      </td>
+                      <td className="px-6 md:px-12 py-5 md:py-7">
+                        {doc.chassisNumber
+                          ? <p className="text-xs md:text-sm font-bold text-gray-200 uppercase tracking-tight font-mono">{doc.chassisNumber}</p>
+                          : <p className="text-[10px] font-bold text-gray-700 uppercase tracking-widest">—</p>}
                       </td>
                       <td className="px-6 md:px-12 py-5 md:py-7">
                         <p className="text-sm md:text-base font-black text-white">৳{doc.vehiclePrice.toLocaleString()}</p>
@@ -1017,7 +1144,7 @@ const App: React.FC = () => {
                   ))}
                   {filteredDocs.length === 0 && !isLoading && (
                     <tr>
-                      <td colSpan={5} className="px-8 py-32 text-center text-gray-700 font-black text-lg uppercase tracking-[0.5em] opacity-30 italic">No records found in database</td>
+                      <td colSpan={6} className="px-8 py-32 text-center text-gray-700 font-black text-lg uppercase tracking-[0.5em] opacity-30 italic">No records found in database</td>
                     </tr>
                   )}
                 </tbody>
@@ -1029,7 +1156,9 @@ const App: React.FC = () => {
 
       {editingDoc && (
         <div className="fixed inset-0 z-[60] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-0">
-          <div className="bg-[#0a0a0b] w-full h-full border-white/10 shadow-2xl overflow-hidden flex flex-col lg:flex-row animate-in zoom-in duration-500">
+          <div className="bg-[#0a0a0b] w-full h-full border-white/10 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in duration-500">
+          <SaveWarning />
+          <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
             <div 
               style={isLargeScreen && editingDoc.type !== DocumentType.PRO_INVOICE ? { width: `${editorWidth}%`, flex: 'none' } : { flex: 1 }} 
               className={`overflow-hidden ${!isLargeScreen && mobilePreviewMode && editingDoc.type !== DocumentType.PRO_INVOICE ? 'hidden' : 'flex flex-col'}`}
@@ -1080,7 +1209,7 @@ const App: React.FC = () => {
                     </button>
                   </div>
                 )}
-                <div className="mb-6 md:mb-8 w-full flex flex-wrap justify-between items-center gap-4 text-white/30">
+                <div className="mb-6 md:mb-8 w-full flex flex-wrap justify-between items-center gap-4 text-white/60">
                   <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-[200px]">
                      <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-red-700 animate-pulse shrink-0"></div>
                      <span className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] md:tracking-[0.4em] line-clamp-2 leading-tight">Live Rendering Engine</span>
@@ -1128,6 +1257,7 @@ const App: React.FC = () => {
                 </div>
               </div>
             )}
+            </div>
           </div>
         </div>
       )}

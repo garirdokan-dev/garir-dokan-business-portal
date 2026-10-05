@@ -5,6 +5,7 @@ import { BusinessDocument, DocumentType, Asset, AssetType, InvoiceItem, FooterSe
 import DocumentPreview from './DocumentPreview';
 import AssetLibrary from './AssetLibrary';
 import { getTypePreferences, saveTypePreferences } from '../utils/storage';
+import { getTodayDateString } from '../utils/date';
 
 interface ProInvoiceGeneratorProps {
   initialData?: Partial<BusinessDocument>;
@@ -25,12 +26,12 @@ const ProInvoiceGenerator: React.FC<ProInvoiceGeneratorProps> = ({ initialData, 
       id: initialData?.id || Math.random().toString(36).substr(2, 9),
       type: type,
       docNumber: initialData?.docNumber || `PRO-${Math.floor(Math.random() * 100000)}`,
-      date: initialData?.date || new Date().toISOString().split('T')[0],
+      date: initialData?.date || getTodayDateString(),
       clientName: initialData?.clientName || '',
       clientPhone: initialData?.clientPhone || '',
       clientAddress: initialData?.clientAddress || '',
       vehiclePrice: initialData?.vehiclePrice || 0,
-      payments: initialData?.payments || [{ id: '1', date: new Date().toISOString().split('T')[0], amount: 0, note: 'CASH' }],
+      payments: initialData?.payments || [{ id: '1', date: getTodayDateString(), amount: 0, note: 'CASH' }],
       items: initialData?.items || [
         { id: Math.random().toString(36).substr(2, 9), description: '', quantity: 1, unitPrice: 0, imageSize: 'medium' }
       ],
@@ -233,7 +234,7 @@ const ProInvoiceGenerator: React.FC<ProInvoiceGeneratorProps> = ({ initialData, 
     onSave(finalDoc);
   };
 
-  const inputClass = "w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-sm font-medium outline-none focus:border-red-700/50 focus:bg-white/[0.08] text-white placeholder:text-white/20 transition-all focus:ring-4 focus:ring-red-700/10";
+  const inputClass = "w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-sm font-medium outline-none focus:border-red-700/50 focus:bg-white/[0.08] text-white placeholder:text-gray-500 transition-all focus:ring-4 focus:ring-red-700/10";
   const labelClass = "block text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-2 ml-1";
 
   const SectionHeader = ({ icon: Icon, title, subtitle }: { icon: any, title: string, subtitle?: string }) => (
@@ -243,7 +244,7 @@ const ProInvoiceGenerator: React.FC<ProInvoiceGeneratorProps> = ({ initialData, 
       </div>
       <div>
         <h3 className="text-sm font-black text-white uppercase tracking-widest">{title}</h3>
-        {subtitle && <p className="text-[10px] font-bold text-gray-600 uppercase tracking-tighter mt-0.5">{subtitle}</p>}
+        {subtitle && <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter mt-0.5">{subtitle}</p>}
       </div>
     </div>
   );
@@ -282,7 +283,7 @@ const ProInvoiceGenerator: React.FC<ProInvoiceGeneratorProps> = ({ initialData, 
                 <div className="flex items-center gap-2 md:gap-3">
                   <span className="text-[7px] md:text-[9px] font-black text-gray-500 uppercase tracking-[0.1em] md:tracking-[0.3em] truncate">ID: {formData.id?.slice(0,8).toUpperCase()}</span>
                   <div className="w-1 h-1 rounded-full bg-red-700 animate-pulse shrink-0"></div>
-                  <span className="text-[7px] md:text-[9px] font-black text-red-700 uppercase tracking-[0.1em] md:tracking-[0.3em] truncate">Live Buffer</span>
+                  <span className="text-[7px] md:text-[9px] font-black text-red-700 uppercase tracking-[0.1em] md:tracking-[0.3em] truncate">Live Cloud Buffer</span>
                 </div>
               </div>
             </div>

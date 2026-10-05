@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { FooterSettings, HeaderSettings, HeroSettings, DocumentType, AssetType, Asset, WatermarkConfig, BusinessDocument } from '../types';
+import { BackupRestore } from './BackupRestore.tsx';
 import { 
   loadFooterSettings, 
   saveFooterSettings,
@@ -54,6 +55,7 @@ import {
 } from 'lucide-react';
 import AssetLibrary from './AssetLibrary';
 import DocumentPreview from './DocumentPreview';
+import { getTodayDateString } from '../utils/date';
 
 const getMockDocument = (type: DocumentType): BusinessDocument => {
   const baseDoc: BusinessDocument = {
@@ -63,7 +65,7 @@ const getMockDocument = (type: DocumentType): BusinessDocument => {
                type === DocumentType.QUOTATION ? 'QT-XXXX-XXXX' :
                type === DocumentType.BILL ? 'BILL-XXXX-XXXX' :
                type === DocumentType.CHALLAN ? 'DC-XXXX-XXXX' : 'PI-XXXX-XXXX',
-    date: new Date().toISOString().split('T')[0],
+    date: getTodayDateString(),
     clientName: '',
     clientDesignation: '',
     clientOffice: '',
@@ -131,7 +133,7 @@ const ICON_OPTIONS = {
 };
 
 const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate, onHeaderUpdate, onHeroUpdate }) => {
-  const [activeTab, setActiveTab] = useState<'HEADER' | 'FOOTER' | 'HERO' | 'WATERMARK'>('HEADER');
+  const [activeTab, setActiveTab] = useState<'HEADER' | 'FOOTER' | 'HERO' | 'WATERMARK' | 'BACKUP'>('HEADER');
   const [footerSettings, setFooterSettings] = useState<FooterSettings>({
     address: '',
     addressIcon: 'MapPin',
@@ -363,7 +365,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
   };
 
   const labelClass = "text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2";
-  const inputClass = "w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-red-700/50 transition-all placeholder:text-gray-700 font-bold";
+  const inputClass = "w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-red-700/50 transition-all placeholder:text-gray-500 font-bold";
 
   return (
     <div className="fixed inset-0 z-[150] bg-[#0a0a0b] animate-in fade-in duration-500">
@@ -411,11 +413,21 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
             >
               HERO BANNER
             </button>
+            <button
+              onClick={() => setActiveTab('BACKUP')}
+              className={`whitespace-nowrap lg:w-full text-left px-5 py-4 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${activeTab === 'BACKUP' ? 'bg-red-700 text-white shadow-xl shadow-red-700/20' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+            >
+              BACKUP &amp; RESTORE
+            </button>
           </div>
 
           {/* Content Area */}
           <div className="flex-1 overflow-y-auto p-6 md:p-10 scrollbar-hide relative">
-            {activeTab === 'FOOTER' ? (
+            {activeTab === 'BACKUP' ? (
+              <div className="animate-in fade-in duration-500">
+                <BackupRestore />
+              </div>
+            ) : activeTab === 'FOOTER' ? (
               <div key="FOOTER" className="max-w-6xl mx-auto space-y-8 md:space-y-10 animate-in slide-in-from-right-10 duration-500">
                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10">
                     <div className="space-y-8 md:space-y-10">
@@ -426,7 +438,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                             </div>
                             <div>
                               <h3 className="text-base md:text-lg font-black uppercase tracking-widest">Footer Content Editor</h3>
-                              <p className="text-[9px] md:text-[10px] font-bold text-gray-600 uppercase">Synchronize across all documents</p>
+                              <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase">Synchronize across all documents</p>
                             </div>
                           </div>
 
@@ -525,7 +537,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                               </div>
                               <div>
                                 <h3 className="text-lg font-black uppercase tracking-widest">Layout & Spacing</h3>
-                                <p className="text-[10px] font-bold text-gray-600 uppercase">Fine-tune footer positioning</p>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase">Fine-tune footer positioning</p>
                               </div>
                             </div>
 
@@ -533,7 +545,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                               <div className="space-y-4 bg-black/20 p-5 rounded-2xl border border-white/5">
                                 <div className="flex justify-between items-center">
                                   <span className={labelClass}>Bottom Offset (mm)</span>
-                                  <span className="text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">{footerSettings.bottomOffset}mm</span>
+                                  <span className="text-[10px] font-black text-red-500 bg-red-700/10 px-2 py-0.5 rounded-md">{footerSettings.bottomOffset}mm</span>
                                 </div>
                                 <input 
                                   type="range" 
@@ -548,7 +560,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                               <div className="space-y-4 bg-black/20 p-5 rounded-2xl border border-white/5">
                                 <div className="flex justify-between items-center">
                                   <span className={labelClass}>Top Padding (mm)</span>
-                                  <span className="text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">{footerSettings.topPadding}mm</span>
+                                  <span className="text-[10px] font-black text-red-500 bg-red-700/10 px-2 py-0.5 rounded-md">{footerSettings.topPadding}mm</span>
                                 </div>
                                 <input 
                                   type="range" 
@@ -563,7 +575,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                               <div className="space-y-4 bg-black/20 p-5 rounded-2xl border border-white/5">
                                 <div className="flex justify-between items-center">
                                   <span className={labelClass}>Horizontal Padding (mm)</span>
-                                  <span className="text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">{footerSettings.horizontalPadding}mm</span>
+                                  <span className="text-[10px] font-black text-red-500 bg-red-700/10 px-2 py-0.5 rounded-md">{footerSettings.horizontalPadding}mm</span>
                                 </div>
                                 <input 
                                   type="range" 
@@ -578,7 +590,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                               <div className="space-y-4 bg-black/20 p-5 rounded-2xl border border-white/5">
                                 <div className="flex justify-between items-center">
                                   <span className={labelClass}>Line Spacing (mm)</span>
-                                  <span className="text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">{footerSettings.lineSpacing}mm</span>
+                                  <span className="text-[10px] font-black text-red-500 bg-red-700/10 px-2 py-0.5 rounded-md">{footerSettings.lineSpacing}mm</span>
                                 </div>
                                 <input 
                                   type="range" 
@@ -653,7 +665,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                          </div>
                        </div>
                        <div className="p-6 bg-red-700/5 rounded-[2rem] border border-red-700/10">
-                          <p className="text-[10px] font-bold text-red-700 uppercase tracking-widest leading-relaxed text-center">
+                          <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest leading-relaxed text-center">
                             This is a real-time preview of your footer section. Changes are applied instantly.
                           </p>
                        </div>
@@ -689,7 +701,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                              </div>
                              <div>
                                <h3 className="text-base md:text-lg font-black uppercase tracking-widest">Watermark Settings</h3>
-                               <p className="text-[9px] md:text-[10px] font-bold text-gray-600 uppercase">Document-specific background customizer</p>
+                               <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase">Document-specific background customizer</p>
                              </div>
                           </div>
 
@@ -750,7 +762,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                                 <div className="space-y-3">
                                   <div className="flex justify-between items-center">
                                     <span className={labelClass}>Watermark Width Size</span>
-                                    <span className="text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">
+                                    <span className="text-[10px] font-black text-red-500 bg-red-700/10 px-2 py-0.5 rounded-md">
                                       {footerSettings.watermarks[selectedWatermarkType].size ?? 50}%
                                     </span>
                                   </div>
@@ -768,7 +780,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                                 <div className="space-y-3">
                                   <div className="flex justify-between items-center">
                                     <span className={labelClass}>Watermark Opacity</span>
-                                    <span className="text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">
+                                    <span className="text-[10px] font-black text-red-500 bg-red-700/10 px-2 py-0.5 rounded-md">
                                       {footerSettings.watermarks[selectedWatermarkType].opacity ?? 15}%
                                     </span>
                                   </div>
@@ -861,7 +873,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                                       <div className="space-y-1.5">
                                         <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                                           <span>Horizontal Offset (L ↔ R)</span>
-                                          <span className="font-mono text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">
+                                          <span className="font-mono text-[10px] font-black text-red-500 bg-red-700/10 px-2 py-0.5 rounded-md">
                                             {(footerSettings.watermarks[selectedWatermarkType]?.offsetX ?? 0) > 0 ? '+' : ''}{footerSettings.watermarks[selectedWatermarkType]?.offsetX ?? 0}%
                                           </span>
                                         </div>
@@ -879,7 +891,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                                       <div className="space-y-1.5">
                                         <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                                           <span>Vertical Offset (U ↔ D)</span>
-                                          <span className="font-mono text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">
+                                          <span className="font-mono text-[10px] font-black text-red-500 bg-red-700/10 px-2 py-0.5 rounded-md">
                                             {(footerSettings.watermarks[selectedWatermarkType]?.offsetY ?? 0) > 0 ? '+' : ''}{footerSettings.watermarks[selectedWatermarkType]?.offsetY ?? 0}%
                                           </span>
                                         </div>
@@ -928,7 +940,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                           </div>
                        </div>
                        <div className="p-6 bg-red-700/5 rounded-[2rem] border border-red-700/10">
-                          <p className="text-[10px] font-bold text-red-700 uppercase tracking-widest leading-relaxed text-center">
+                          <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest leading-relaxed text-center">
                             Watermark image is absolutely centered behind document text/tables at the specified size and transparency, rendering perfectly under PDF and Print views.
                           </p>
                        </div>
@@ -964,7 +976,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                             </div>
                             <div>
                               <h3 className="text-base md:text-lg font-black uppercase tracking-widest">Header Content Editor</h3>
-                              <p className="text-[9px] md:text-[10px] font-bold text-gray-600 uppercase">Top Bar Customization for {DOC_TYPES_CONFIG[selectedHeaderType].label}</p>
+                              <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase">Top Bar Customization for {DOC_TYPES_CONFIG[selectedHeaderType].label}</p>
                             </div>
                           </div>
 
@@ -1014,7 +1026,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                               <div className="space-y-4 bg-black/20 p-5 rounded-2xl border border-white/5">
                                 <div className="flex justify-between items-center">
                                   <span className={labelClass}>Font Size (px)</span>
-                                  <span className="text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">{currentHeader.fontSize}px</span>
+                                  <span className="text-[10px] font-black text-red-500 bg-red-700/10 px-2 py-0.5 rounded-md">{currentHeader.fontSize}px</span>
                                 </div>
                                 <input 
                                   type="range" 
@@ -1046,7 +1058,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                             </div>
                             <div>
                               <h3 className="text-base md:text-lg font-black uppercase tracking-widest">Brand Customization</h3>
-                              <p className="text-[9px] md:text-[10px] font-bold text-gray-600 uppercase">Logo & Positioning for {DOC_TYPES_CONFIG[selectedHeaderType].label}</p>
+                              <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase">Logo & Positioning for {DOC_TYPES_CONFIG[selectedHeaderType].label}</p>
                             </div>
                           </div>
 
@@ -1105,7 +1117,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                               <div className="space-y-4 bg-black/20 p-5 rounded-2xl border border-white/5">
                                 <div className="flex justify-between items-center">
                                   <span className={labelClass}>Logo Scale</span>
-                                  <span className="text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">{currentHeader.logoSize ?? 220}px</span>
+                                  <span className="text-[10px] font-black text-red-500 bg-red-700/10 px-2 py-0.5 rounded-md">{currentHeader.logoSize ?? 220}px</span>
                                 </div>
                                 <div className="flex items-center gap-4">
                                   <Maximize2 className="w-4 h-4 text-gray-600" />
@@ -1122,7 +1134,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                               <div className="space-y-4 bg-black/20 p-5 rounded-2xl border border-white/5">
                                 <div className="flex justify-between items-center">
                                   <span className={labelClass}>Horizontal Offset</span>
-                                  <span className="text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">{currentHeader.logoPosition ?? 0}px</span>
+                                  <span className="text-[10px] font-black text-red-500 bg-red-700/10 px-2 py-0.5 rounded-md">{currentHeader.logoPosition ?? 0}px</span>
                                 </div>
                                 <div className="flex items-center gap-4">
                                   <MoveHorizontal className="w-4 h-4 text-gray-600" />
@@ -1187,7 +1199,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                           </div>
                        </div>
                        <div className="p-6 bg-red-700/5 rounded-[2rem] border border-red-700/10">
-                          <p className="text-[10px] font-bold text-red-700 uppercase tracking-widest leading-relaxed text-center">
+                          <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest leading-relaxed text-center">
                             This is a real-time preview of your header section. Changes are applied instantly.
                           </p>
                        </div>
@@ -1204,7 +1216,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                     </div>
                     <div>
                       <h3 className="text-base md:text-lg font-black uppercase tracking-widest">Hero Banner Settings</h3>
-                      <p className="text-[9px] md:text-[10px] font-bold text-gray-600 uppercase">Website Background Control</p>
+                      <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase">Website Background Control</p>
                     </div>
                   </div>
 
@@ -1299,7 +1311,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                       <div className="space-y-4 bg-black/20 p-4 md:p-5 rounded-2xl border border-white/5">
                         <div className="flex justify-between items-center">
                           <span className={labelClass}>Auto-change Interval (ms)</span>
-                          <span className="text-[9px] md:text-[10px] font-black text-red-700 bg-red-700/10 px-2 py-0.5 rounded-md">{heroSettings.interval}ms</span>
+                          <span className="text-[9px] md:text-[10px] font-black text-red-500 bg-red-700/10 px-2 py-0.5 rounded-md">{heroSettings.interval}ms</span>
                         </div>
                         <input 
                           type="range" 
@@ -1346,7 +1358,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                      )}
                   </div>
                   <div className="p-5 md:p-6 bg-red-700/5 rounded-2xl md:rounded-[2rem] border border-red-700/10">
-                    <p className="text-[9px] md:text-[10px] font-bold text-red-700 uppercase tracking-widest leading-relaxed text-center">
+                    <p className="text-[9px] md:text-[10px] font-bold text-red-500 uppercase tracking-widest leading-relaxed text-center">
                       This is a preview of your hero banner. The first image is shown as a sample.
                     </p>
                   </div>
@@ -1377,7 +1389,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                           <div className="space-y-4">
                             <div className="flex justify-between items-center">
                               <span className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">Image {i + 1} Preview</span>
-                              <span className="text-[9px] md:text-[10px] font-black text-red-700 bg-red-700/10 px-2 md:px-3 py-1 rounded-full">X: {pos.x}% | Y: {pos.y}%</span>
+                              <span className="text-[9px] md:text-[10px] font-black text-red-500 bg-red-700/10 px-2 md:px-3 py-1 rounded-full">X: {pos.x}% | Y: {pos.y}%</span>
                             </div>
                             <div 
                               className="relative aspect-video rounded-2xl md:rounded-3xl overflow-hidden cursor-crosshair border border-white/10 group"
@@ -1409,7 +1421,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                             <div className="space-y-4">
                               <div className="flex justify-between items-center">
                                 <label className={labelClass}>Horizontal Focus (X-Axis)</label>
-                                <span className="text-[9px] md:text-[10px] font-black text-red-700">{pos.x}%</span>
+                                <span className="text-[9px] md:text-[10px] font-black text-red-500">{pos.x}%</span>
                               </div>
                               <input 
                                 type="range" 
@@ -1428,7 +1440,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                             <div className="space-y-4">
                               <div className="flex justify-between items-center">
                                 <label className={labelClass}>Vertical Focus (Y-Axis)</label>
-                                <span className="text-[9px] md:text-[10px] font-black text-red-700">{pos.y}%</span>
+                                <span className="text-[9px] md:text-[10px] font-black text-red-500">{pos.y}%</span>
                               </div>
                               <input 
                                 type="range" 
@@ -1456,7 +1468,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onClose, onFooterUpdate
                     {heroSettings.selectedImages.length === 0 && (
                       <div className="bg-white/5 p-8 md:p-12 rounded-2xl md:rounded-[2.5rem] border border-white/5 border-dashed flex flex-col items-center justify-center text-center">
                         <ImageIcon className="w-10 h-10 md:w-12 md:h-12 text-gray-700 mb-4" />
-                        <p className="text-[10px] md:text-[11px] font-black text-gray-600 uppercase tracking-widest">No images selected for the banner</p>
+                        <p className="text-[10px] md:text-[11px] font-black text-gray-400 uppercase tracking-widest">No images selected for the banner</p>
                       </div>
                     )}
                   </div>
