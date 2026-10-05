@@ -890,12 +890,12 @@ const App: React.FC = () => {
           <footer className="px-6 md:px-20 py-16 md:py-24 border-t border-white/5 bg-[#0a0a0b] flex flex-col items-center">
             <div className="flex flex-col md:flex-row items-center gap-4 mb-10">
               <div className="w-12 h-12 bg-red-700 rounded-2xl flex items-center justify-center font-black text-2xl shadow-xl shadow-red-700/20 text-white text-white-always">GD</div>
-              <span className="text-2xl font-black tracking-tighter text-center md:text-left">Garir Dokan <span className="text-red-700 uppercase">Pro</span></span>
+              <span className="text-2xl font-black tracking-tighter text-center md:text-left">Garir Dokan</span>
             </div>
             <p className="text-gray-600 text-[10px] md:text-[11px] font-black uppercase tracking-[0.3em] md:tracking-[0.5em] text-center max-w-2xl leading-loose">
               Advanced Document Infrastructure for Automotive Trading • Importers • Dealers
             </p>
-            <div className="mt-16 text-gray-800 text-[9px] md:text-[11px] font-black uppercase tracking-[0.2em] text-center">© 2026 GARIR DOKAN PRO • ALL RIGHTS RESERVED</div>
+            <div className="mt-16 text-gray-800 text-[9px] md:text-[11px] font-black uppercase tracking-[0.2em] text-center">© 2026 GARIR DOKAN • ALL RIGHTS RESERVED</div>
           </footer>
         </div>
       )}
