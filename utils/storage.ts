@@ -1,6 +1,6 @@
 
 import { BusinessDocument, Asset, DocumentType, FooterSettings, HeaderSettings, HeroSettings } from '../types.ts';
-import { supabase, isSupabaseConfigured } from './supabase.ts';
+import { hostinger, isHostingerConfigured, hasContent } from './hostinger.ts';
 import { queueFailure, markSynced, registerReplay, type PendingItem } from './sync.ts';
 
 export interface LogoSettings {
@@ -80,9 +80,9 @@ const setLocalItem = <T>(key: string, value: T): void => {
   }
 };
 
-// Documents Supabase & Local Utils
+// Documents: Hostinger database & local cache
 
-/* A cloud call must never hang the interface. On a flaky or blocked connection Supabase's
+/* A cloud call must never hang the interface. On a flaky or blocked connection the server's
  * request can stay unresolved indefinitely, which used to freeze saving and restoring; every
  * call is therefore time-bounded and falls into the normal "queued for retry" path instead. */
 const CLOUD_TIMEOUT_MS = 12000;      // writes: worth waiting for
@@ -106,19 +106,14 @@ export const withTimeout = async <T>(work: PromiseLike<T>, label: string): Promi
 export const getCachedDocuments = (): BusinessDocument[] => getLocalItem<BusinessDocument[]>('gd_documents', []);
 
 export const loadDocuments = async (): Promise<BusinessDocument[]> => {
-  if (supabase) {
+  if (isHostingerConfigured) {
     try {
-      const { data, error } = await withTimeout(supabase
-        .from('documents')
-        .select('data')
-        .order('created_at', { ascending: false }), 'loading documents');
-
-      if (error) throw error;
-      const remoteDocs = data ? data.map(item => item.data as BusinessDocument) : [];
+      const rows = await withTimeout(hostinger.list<BusinessDocument>('documents'), 'loading documents');
+      const remoteDocs = Array.isArray(rows) ? rows : [];
       setLocalItem('gd_documents', remoteDocs);
       return remoteDocs;
     } catch (e) {
-      console.warn('Supabase loadDocuments failed or pending schema, using local cache:', e);
+      console.warn('Hostinger loadDocuments failed, using local cache:', e);
     }
   }
   return getLocalItem<BusinessDocument[]>('gd_documents', []);
@@ -137,21 +132,13 @@ export const addOrUpdateDocument = async (doc: BusinessDocument): Promise<Busine
   }
   setLocalItem('gd_documents', updated);
 
-  if (supabase) {
+  if (isHostingerConfigured) {
     try {
-      const { error } = await withTimeout(supabase
-        .from('documents')
-        .upsert({ 
-          id: doc.id, 
-          data: doc,
-          created_at: new Date(doc.createdAt).toISOString()
-        }, { onConflict: 'id' }), 'saving the document');
-
-      if (error) throw error;
+      await withTimeout(hostinger.save('documents', doc.id, doc), 'saving the document');
       markSynced('document', doc.id);
       return await loadDocuments();
     } catch (error) {
-      console.error('Failed to save document to Supabase:', error);
+      console.error('Failed to save document to the Hostinger database:', error);
       queueFailure('document', 'upsert', doc.id, error);
     }
   }
@@ -164,18 +151,13 @@ export const deleteDocument = async (id: string): Promise<BusinessDocument[]> =>
   const updated = current.filter(d => d.id !== id);
   setLocalItem('gd_documents', updated);
 
-  if (supabase) {
+  if (isHostingerConfigured) {
     try {
-      const { error } = await withTimeout(supabase
-        .from('documents')
-        .delete()
-        .eq('id', id), 'deleting the document');
-
-      if (error) throw error;
+      await withTimeout(hostinger.remove('documents', id), 'deleting the document');
       markSynced('document', id);
       return await loadDocuments();
     } catch (e) {
-      console.error('Failed to delete document from Supabase:', e);
+      console.error('Failed to delete document from the Hostinger database:', e);
       queueFailure('document', 'delete', id, e);
     }
   }
@@ -183,20 +165,16 @@ export const deleteDocument = async (id: string): Promise<BusinessDocument[]> =>
   return updated;
 };
 
-// Asset Library Supabase & Local Utils
+// Asset Library: Hostinger database & local cache
 export const loadAssets = async (): Promise<Asset[]> => {
-  if (supabase) {
+  if (isHostingerConfigured) {
     try {
-      const { data, error } = await withTimeout(supabase
-        .from('assets')
-        .select('data'), 'loading assets');
-
-      if (error) throw error;
-      const remoteAssets = data ? data.map(item => item.data as Asset) : [];
+      const rows = await withTimeout(hostinger.list<Asset>('assets'), 'loading assets');
+      const remoteAssets = Array.isArray(rows) ? rows : [];
       setLocalItem('gd_assets', remoteAssets);
       return remoteAssets;
     } catch (e) {
-      console.warn('Supabase loadAssets failed, using local cache:', e);
+      console.warn('Hostinger loadAssets failed, using local cache:', e);
     }
   }
   return getLocalItem<Asset[]>('gd_assets', []);
@@ -214,17 +192,13 @@ export const saveAsset = async (asset: Asset): Promise<Asset[]> => {
   }
   setLocalItem('gd_assets', updated);
 
-  if (supabase) {
+  if (isHostingerConfigured) {
     try {
-      const { error } = await withTimeout(supabase
-        .from('assets')
-        .upsert({ id: asset.id, data: asset }), 'saving the asset');
-
-      if (error) throw error;
+      await withTimeout(hostinger.save('assets', asset.id, asset), 'saving the asset');
       markSynced('asset', asset.id);
       return await loadAssets();
     } catch (error) {
-      console.error('Failed to save asset to Supabase:', error);
+      console.error('Failed to save asset to the Hostinger database:', error);
       queueFailure('asset', 'upsert', asset.id, error);
     }
   }
@@ -237,18 +211,13 @@ export const deleteAsset = async (id: string): Promise<Asset[]> => {
   const updated = current.filter(a => a.id !== id);
   setLocalItem('gd_assets', updated);
 
-  if (supabase) {
+  if (isHostingerConfigured) {
     try {
-      const { error } = await withTimeout(supabase
-        .from('assets')
-        .delete()
-        .eq('id', id), 'deleting the asset');
-
-      if (error) throw error;
+      await withTimeout(hostinger.remove('assets', id), 'deleting the asset');
       markSynced('asset', id);
       return await loadAssets();
     } catch (e) {
-      console.error('Failed to delete asset from Supabase:', e);
+      console.error('Failed to delete asset from the Hostinger database:', e);
       queueFailure('asset', 'delete', id, e);
     }
   }
@@ -256,20 +225,14 @@ export const deleteAsset = async (id: string): Promise<Asset[]> => {
   return updated;
 };
 
-// User Preferences Supabase & Local Utils
+// User Preferences: Hostinger database & local cache
 export const loadPreferences = async (): Promise<UserPreferences> => {
-  if (supabase) {
+  if (isHostingerConfigured) {
     try {
-      const { data, error } = await withTimeout(supabase
-        .from('preferences')
-        .select('data')
-        .eq('id', 'user_prefs')
-        .single(), 'loading preferences');
-
-      if (error && error.code !== 'PGRST116') throw error;
-      if (data && data.data) {
-        setLocalItem('gd_user_prefs', data.data);
-        return data.data as UserPreferences;
+      const data = await withTimeout(hostinger.getPreference<any>('user_prefs'), 'loading preferences');
+      if (hasContent(data)) {
+        setLocalItem('gd_user_prefs', data);
+        return data as UserPreferences;
       }
     } catch {
       // fallback to local
@@ -290,11 +253,8 @@ export const saveTypePreferences = async (type: DocumentType, settings: LogoSett
     };
     setLocalItem('gd_user_prefs', updatedPrefs);
 
-    if (supabase) {
-      const { error } = await withTimeout(supabase
-        .from('preferences')
-        .upsert({ id: 'user_prefs', data: updatedPrefs }), 'saving preferences');
-      if (error) throw error;
+    if (isHostingerConfigured) {
+      await withTimeout(hostinger.savePreference('user_prefs', updatedPrefs), 'saving preferences');
       markSynced('preferences', 'user_prefs');
     }
   } catch (e) {
@@ -310,18 +270,12 @@ export const getTypePreferences = async (type: DocumentType): Promise<LogoSettin
 
 // Global Footer Settings Utils
 export const loadFooterSettings = async (): Promise<FooterSettings> => {
-  if (supabase) {
+  if (isHostingerConfigured) {
     try {
-      const { data, error } = await withTimeout(supabase
-        .from('preferences')
-        .select('data')
-        .eq('id', 'global_footer')
-        .single(), 'loading preferences');
-
-      if (error && error.code !== 'PGRST116') throw error;
-      if (data && data.data) {
-        setLocalItem('gd_global_footer', data.data);
-        return data.data as FooterSettings;
+      const data = await withTimeout(hostinger.getPreference<any>('global_footer'), 'loading preferences');
+      if (hasContent(data)) {
+        setLocalItem('gd_global_footer', data);
+        return data as FooterSettings;
       }
     } catch {
       // fallback to local
@@ -333,11 +287,8 @@ export const loadFooterSettings = async (): Promise<FooterSettings> => {
 export const saveFooterSettings = async (settings: FooterSettings) => {
   try {
     setLocalItem('gd_global_footer', settings);
-    if (supabase) {
-      const { error } = await withTimeout(supabase
-        .from('preferences')
-        .upsert({ id: 'global_footer', data: settings }), 'saving preferences');
-      if (error) throw error;
+    if (isHostingerConfigured) {
+      await withTimeout(hostinger.savePreference('global_footer', settings), 'saving preferences');
       markSynced('settings', 'global_footer');
     }
   } catch (e) {
@@ -348,22 +299,16 @@ export const saveFooterSettings = async (settings: FooterSettings) => {
 
 // Global Header Settings Utils
 export const loadAllHeaderSettings = async (): Promise<Record<DocumentType, HeaderSettings>> => {
-  if (supabase) {
+  if (isHostingerConfigured) {
     try {
-      const { data, error } = await withTimeout(supabase
-        .from('preferences')
-        .select('data')
-        .eq('id', 'global_headers_v2')
-        .single(), 'loading preferences');
-
-      if (error && error.code !== 'PGRST116') throw error;
-      if (data && data.data) {
-        const merged = { ...DEFAULT_HEADERS_MAP, ...(data.data as Record<DocumentType, HeaderSettings>) };
+      const data = await withTimeout(hostinger.getPreference<any>('global_headers_v2'), 'loading preferences');
+      if (hasContent(data)) {
+        const merged = { ...DEFAULT_HEADERS_MAP, ...(data as Record<DocumentType, HeaderSettings>) };
         setLocalItem('gd_global_headers_v2', merged);
         return merged;
       }
     } catch (e) {
-      console.warn('Failed to load all header settings from Supabase:', e);
+      console.warn('Failed to load all header settings from the Hostinger database:', e);
     }
   }
   return getLocalItem<Record<DocumentType, HeaderSettings>>('gd_global_headers_v2', DEFAULT_HEADERS_MAP);
@@ -372,11 +317,8 @@ export const loadAllHeaderSettings = async (): Promise<Record<DocumentType, Head
 export const saveAllHeaderSettings = async (settings: Record<DocumentType, HeaderSettings>) => {
   try {
     setLocalItem('gd_global_headers_v2', settings);
-    if (supabase) {
-      const { error } = await withTimeout(supabase
-        .from('preferences')
-        .upsert({ id: 'global_headers_v2', data: settings }), 'saving preferences');
-      if (error) throw error;
+    if (isHostingerConfigured) {
+      await withTimeout(hostinger.savePreference('global_headers_v2', settings), 'saving preferences');
       markSynced('settings', 'global_headers_v2');
     }
   } catch (e) {
@@ -398,18 +340,12 @@ export const saveHeaderSettings = async (settings: HeaderSettings) => {
 
 // Hero Banner Settings Utils
 export const loadHeroSettings = async (): Promise<HeroSettings> => {
-  if (supabase) {
+  if (isHostingerConfigured) {
     try {
-      const { data, error } = await withTimeout(supabase
-        .from('preferences')
-        .select('data')
-        .eq('id', 'hero_banner')
-        .single(), 'loading preferences');
-
-      if (error && error.code !== 'PGRST116') throw error;
-      if (data && data.data) {
-        setLocalItem('gd_hero_banner', data.data);
-        return data.data as HeroSettings;
+      const data = await withTimeout(hostinger.getPreference<any>('hero_banner'), 'loading preferences');
+      if (hasContent(data)) {
+        setLocalItem('gd_hero_banner', data);
+        return data as HeroSettings;
       }
     } catch {
       // fallback to local
@@ -421,11 +357,8 @@ export const loadHeroSettings = async (): Promise<HeroSettings> => {
 export const saveHeroSettings = async (settings: HeroSettings) => {
   try {
     setLocalItem('gd_hero_banner', settings);
-    if (supabase) {
-      const { error } = await withTimeout(supabase
-        .from('preferences')
-        .upsert({ id: 'hero_banner', data: settings }), 'saving preferences');
-      if (error) throw error;
+    if (isHostingerConfigured) {
+      await withTimeout(hostinger.savePreference('hero_banner', settings), 'saving preferences');
       markSynced('settings', 'hero_banner');
     }
   } catch (e) {
@@ -437,38 +370,32 @@ export const saveHeroSettings = async (settings: HeroSettings) => {
 
 
 /* ------------------------------------------------------------------ *
- * Replaying writes that could not reach Supabase earlier.
+ * Replaying writes that could not reach the Hostinger database earlier.
  * Everything is read back from the local cache, which is always the
  * newest copy, so a retry can never resurrect stale data.
  * ------------------------------------------------------------------ */
 const replayPending = async (item: PendingItem): Promise<void> => {
-  if (!supabase) throw new Error('cloud not configured');
+  if (!isHostingerConfigured) throw new Error('Hostinger database not configured');
 
   if (item.kind === 'document') {
     if (item.op === 'delete') {
-      const { error } = await withTimeout(supabase.from('documents').delete().eq('id', item.recordId), 'deleting documents');
-      if (error) throw error;
+      await withTimeout(hostinger.remove('documents', item.recordId), 'deleting documents');
       return;
     }
     const doc = getLocalItem<BusinessDocument[]>('gd_documents', []).find(d => d.id === item.recordId);
     if (!doc) return;                       // deleted since; nothing to push
-    const { error } = await withTimeout(supabase
-      .from('documents')
-      .upsert({ id: doc.id, data: doc, created_at: new Date(doc.createdAt).toISOString() }, { onConflict: 'id' }), 'saving documents');
-    if (error) throw error;
+    await withTimeout(hostinger.save('documents', doc.id, doc), 'saving documents');
     return;
   }
 
   if (item.kind === 'asset') {
     if (item.op === 'delete') {
-      const { error } = await withTimeout(supabase.from('assets').delete().eq('id', item.recordId), 'deleting assets');
-      if (error) throw error;
+      await withTimeout(hostinger.remove('assets', item.recordId), 'deleting assets');
       return;
     }
     const asset = getLocalItem<Asset[]>('gd_assets', []).find(a => a.id === item.recordId);
     if (!asset) return;
-    const { error } = await withTimeout(supabase.from('assets').upsert({ id: asset.id, data: asset }), 'saving assets');
-    if (error) throw error;
+    await withTimeout(hostinger.save('assets', asset.id, asset), 'saving assets');
     return;
   }
 
@@ -484,8 +411,7 @@ const replayPending = async (item: PendingItem): Promise<void> => {
   if (!key) return;
   const data = getLocalItem<unknown>(key, null as unknown);
   if (data === null) return;
-  const { error } = await withTimeout(supabase.from('preferences').upsert({ id: item.recordId, data }), 'saving preferences');
-  if (error) throw error;
+  await withTimeout(hostinger.savePreference(item.recordId, data), 'saving preferences');
 };
 
-registerReplay(replayPending, isSupabaseConfigured);
+registerReplay(replayPending, isHostingerConfigured);

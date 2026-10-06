@@ -1,12 +1,12 @@
 /**
  * Sync state for the whole app.
  *
- * Everything already saves to localStorage first and only then to Supabase, so the app keeps
+ * Everything already saves to localStorage first and only then to the Hostinger database, so the app keeps
  * working without a connection. What was missing is telling the operator when the cloud copy
  * did NOT happen, and trying again later. This module holds that state:
  *
  *   - are we online?
- *   - how many writes are still waiting to reach Supabase?
+ *   - how many writes are still waiting to reach the Hostinger database?
  *   - when did the last successful sync happen, and what was the last error?
  *
  * Failed writes are queued in localStorage and replayed when the connection returns, so a save
@@ -26,7 +26,7 @@ export interface PendingItem {
 
 export interface SyncStatus {
   online: boolean;
-  /** Supabase is configured at all */
+  /** the Hostinger database is connected at all (false in the AI Studio preview) */
   cloud: boolean;
   pending: number;
   lastSyncedAt: number | null;
@@ -59,7 +59,7 @@ const writeQueue = (items: PendingItem[]) => {
 let lastError: string | null = null;
 let listeners: Array<(s: SyncStatus) => void> = [];
 let flushing = false;
-/** set by storage.ts so this module does not need to know about Supabase itself */
+/** set by storage.ts so this module does not need to know about the server itself */
 let replay: ((item: PendingItem) => Promise<void>) | null = null;
 let cloudConfigured = false;
 

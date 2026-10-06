@@ -1,15 +1,16 @@
 /**
- * Keeps the Pricing Desk's duty sheets in Supabase, so every computer sees the same ones.
+ * Keeps the Pricing Desk's duty sheets in the Hostinger database, so every computer sees the same ones.
  *
- * What is stored, in the existing `preferences` table (no new table or bucket needed):
+ * What is stored, in the existing `preferences` table (no new table needed):
  *   - id `price_desk`        the parsed duty sheets, the chosen month, rate, C&F and drive
- *   - id `price_pdf:<id>`    each original PDF, for the preview, base64-encoded
+ *   - id `price_pdf:<id>`    each original PDF, for the preview. The server keeps the PDF itself as
+ *                            a file in /var/www/portal/uploads and the row holds its /uploads/... link.
  *
  * The newest copy wins: every local change stamps the store with a time, and on start-up — and
  * whenever the window comes back into focus — the cloud copy is fetched and taken if it is newer.
  * The car being priced at the moment stays on each device; only the sheets and charges are shared.
  */
-import { supabase } from './supabase.ts';
+import { hostinger, isHostingerConfigured, hasContent } from './hostinger.ts';
 import { withTimeout } from './storage.ts';
 import { queueFailure, markSynced } from './sync.ts';
 import { getStore, setStore, adoptStore, onStoreChanged, monthKey, monthRank, type PriceStore } from '../pricing/price/priceStore';
@@ -18,14 +19,19 @@ import { setRemotePdfs, loadPdf } from '../pricing/price/pdfStore';
 const STORE_ID = 'price_desk';
 const PDF_PREFIX = 'price_pdf:';
 
+/* Every PDF id this browser has seen. The API cannot list rows by prefix, so Reset uses this
+ * (plus the shared copy) to know which cloud PDFs to clear. */
+const knownPdfIds = new Set<string>();
+const rememberPdfIds = (s: PriceStore | null | undefined) => {
+  s?.months?.forEach(m => { if (m.pdfId) knownPdfIds.add(m.pdfId); });
+};
+
 /* ---------------- the duty-sheet data ---------------- */
 
 const pushStore = async (s: PriceStore) => {
-  if (!supabase) return;
+  if (!isHostingerConfigured) return;
   try {
-    const { error } = await withTimeout(
-      supabase.from('preferences').upsert({ id: STORE_ID, data: s }), 'saving duty sheets');
-    if (error) throw error;
+    await withTimeout(hostinger.savePreference(STORE_ID, s), 'saving duty sheets');
     markSynced('settings', STORE_ID);
   } catch (e) {
     queueFailure('settings', 'upsert', STORE_ID, e);
@@ -34,20 +40,21 @@ const pushStore = async (s: PriceStore) => {
 
 let pushTimer: number | undefined;
 const schedulePush = (s: PriceStore) => {
+  rememberPdfIds(s);
   window.clearTimeout(pushTimer);
   pushTimer = window.setTimeout(() => { void pushStore(s); }, 1200);   // one write per burst of edits
 };
 
 let lastPull = 0;
 const pullStore = async () => {
-  if (!supabase) return;
+  if (!isHostingerConfigured) return;
   lastPull = Date.now();
   try {
-    const { data, error } = await withTimeout(
-      supabase.from('preferences').select('data').eq('id', STORE_ID).maybeSingle(), 'loading duty sheets');
-    if (error) throw error;
-    const cloud = (data?.data ?? null) as PriceStore | null;
+    const data = await withTimeout(hostinger.getPreference<PriceStore>(STORE_ID), 'loading duty sheets');
+    const cloud = hasContent(data) ? (data as PriceStore) : null;
     const local = getStore();
+    rememberPdfIds(cloud);
+    rememberPdfIds(local);
     if (!cloud) {
       // first time on the cloud: send what this computer already has (sheets loaded before this
       // update carry no timestamp, so they are stamped now)
@@ -91,43 +98,62 @@ const fromBase64 = (b64: string, type = 'application/pdf'): Blob => {
   return new Blob([bytes], { type });
 };
 
+/** How a PDF row looks: `file` is the /uploads link; `b64` only in older copies that kept the file inline. */
+interface StoredPdf { type?: string; file?: string; b64?: string }
+
 const remotePdfs = {
   put: async (id: string, blob: Blob) => {
-    if (!supabase) return;
-    const { error } = await withTimeout(
-      supabase.from('preferences').upsert({ id: PDF_PREFIX + id, data: { type: blob.type || 'application/pdf', b64: await toBase64(blob) } }),
+    if (!isHostingerConfigured) return;
+    knownPdfIds.add(id);
+    const type = blob.type || 'application/pdf';
+    // Sent as a data URL: the server saves it as a real PDF file and keeps only its link.
+    await withTimeout(
+      hostinger.savePreference(PDF_PREFIX + id, { type, file: `data:${type};base64,${await toBase64(blob)}` }),
       'saving a duty sheet file');
-    if (error) throw error;
   },
   get: async (id: string): Promise<Blob | null> => {
-    if (!supabase) return null;
-    const { data, error } = await withTimeout(
-      supabase.from('preferences').select('data').eq('id', PDF_PREFIX + id).maybeSingle(), 'loading a duty sheet file');
-    if (error) throw error;
-    const d = data?.data as { type?: string; b64?: string } | undefined;
+    if (!isHostingerConfigured) return null;
+    const d = await withTimeout(hostinger.getPreference<StoredPdf>(PDF_PREFIX + id), 'loading a duty sheet file');
+    if (d?.file) {
+      const response = await withTimeout(fetch(d.file, { credentials: 'same-origin' }), 'loading a duty sheet file');
+      if (!response.ok) throw new Error(`Loading the duty sheet file failed (${response.status})`);
+      const bytes = await response.blob();
+      return new Blob([bytes], { type: d.type || bytes.type || 'application/pdf' });
+    }
     return d?.b64 ? fromBase64(d.b64, d.type) : null;
   },
   remove: async (id: string) => {
-    if (!supabase) return;
-    await withTimeout(supabase.from('preferences').delete().eq('id', PDF_PREFIX + id), 'removing a duty sheet file');
+    if (!isHostingerConfigured) return;
+    knownPdfIds.delete(id);
+    await withTimeout(hostinger.clearPreference(PDF_PREFIX + id), 'removing a duty sheet file');
   },
   clear: async () => {
-    if (!supabase) return;
-    await withTimeout(supabase.from('preferences').delete().like('id', PDF_PREFIX + '%'), 'removing duty sheet files');
+    if (!isHostingerConfigured) return;
+    try {
+      // The shared copy may still list sheets this browser never saw.
+      const shared = await withTimeout(hostinger.getPreference<PriceStore>(STORE_ID), 'loading duty sheets');
+      if (hasContent(shared)) rememberPdfIds(shared as PriceStore);
+    } catch {
+      /* clear what this browser knows about */
+    }
+    const ids = [...knownPdfIds];
+    knownPdfIds.clear();
+    for (const id of ids) {
+      await withTimeout(hostinger.clearPreference(PDF_PREFIX + id), 'removing duty sheet files');
+    }
   },
 };
 
 /** PDFs that were loaded before the cloud copy existed: send any the cloud does not have yet. */
 const backfillPdfs = async () => {
-  if (!supabase) return;
+  if (!isHostingerConfigured) return;
   const ids = [...new Set(getStore().months.map(m => m.pdfId).filter(Boolean))];
   if (!ids.length) return;
   try {
-    const { data } = await withTimeout(
-      supabase.from('preferences').select('id').in('id', ids.map(i => PDF_PREFIX + i)), 'checking duty sheet files');
-    const have = new Set(((data || []) as { id: string }[]).map(r => r.id));
     for (const id of ids) {
-      if (have.has(PDF_PREFIX + id)) continue;
+      knownPdfIds.add(id);
+      const existing = await withTimeout(hostinger.getPreference<StoredPdf>(PDF_PREFIX + id), 'checking duty sheet files');
+      if (existing?.file || existing?.b64) continue;
       const blob = await loadPdf(id);
       if (blob) await remotePdfs.put(id, blob);
     }
@@ -138,7 +164,8 @@ const backfillPdfs = async () => {
 
 /** Called once at start-up. */
 export const startPriceCloudSync = () => {
-  if (!supabase) return;
+  if (!isHostingerConfigured) return;
+  rememberPdfIds(getStore());
   setRemotePdfs(remotePdfs);
   onStoreChanged(schedulePush);
   void pullStore().then(backfillPdfs);

@@ -41,7 +41,7 @@ async function run<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRe
 
 /* ------------------------------------------------------------------ *
  * Optional cloud copy. The site plugs in functions that keep each PDF
- * in Supabase too, so a preview opened on another computer still has
+ * in the Hostinger database too, so a preview opened on another computer still has
  * the file. Without them the store stays local, exactly as before.
  * ------------------------------------------------------------------ */
 interface RemotePdfs {
