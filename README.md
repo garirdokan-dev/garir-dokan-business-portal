@@ -107,9 +107,9 @@ under the same id, with the same number, chassis and dates, and confirms "Restor
 ## Duty sheets on every computer
 
 The Pricing Desk's duty sheets, the chosen month, and the rate, C&F and drive figures are kept in
-Supabase as well as in the browser (`utils/priceCloud.ts`), in the existing `preferences` table —
-`price_desk` for the data and `price_pdf:<id>` for each original PDF — so no new table or storage
-bucket is needed. Every change is stamped with a time and sent up a moment later; on start-up and
+the Hostinger database as well as in the browser (`utils/priceCloud.ts`), in the existing `preferences` table —
+`price_desk` for the data and `price_pdf:<id>` for each original PDF, which the server stores as a
+file in `/var/www/portal/uploads` — so no new table is needed. Every change is stamped with a time and sent up a moment later; on start-up and
 whenever the window regains focus the cloud copy is fetched and taken if it is newer. A computer
 that has never seen a sheet gets it on first load, and the PDF preview fetches the file from the
 cloud on demand. Reset clears the cloud copy too. Sheets loaded on a computer before this existed
@@ -118,7 +118,7 @@ on each device.
 
 ## Saving, syncing and backups
 
-Everything is written to this browser first and then to Supabase, so the app keeps working with
+Everything is written to this browser first and then to the Hostinger database, so the app keeps working with
 no connection. What happens when the cloud copy fails is now visible and recoverable:
 
 - **A badge appears only when something is wrong** — amber with a count when writes are waiting,

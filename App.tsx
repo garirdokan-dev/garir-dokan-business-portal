@@ -43,7 +43,7 @@ import { DOC_TYPES_CONFIG } from './constants.tsx';
 import { addOrUpdateDocument, loadDocuments, deleteDocument, loadFooterSettings, loadAllHeaderSettings, loadHeroSettings,
   getCachedDocuments,
 } from './utils/storage.ts';
-import { isSupabaseConfigured } from './utils/supabase.ts';
+import { isHostingerConfigured } from './utils/hostinger.ts';
 import DocumentForm from './components/DocumentForm.tsx';
 import DocumentPreview from './components/DocumentPreview.tsx';
 import ProInvoiceGenerator from './components/ProInvoiceGenerator.tsx';
@@ -857,21 +857,21 @@ const App: React.FC = () => {
 
                   <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center justify-center lg:justify-start gap-4 sm:gap-6 md:gap-12 relative z-10 w-full lg:w-auto">
                     <div className="flex items-center gap-3 md:gap-4">
-                      <div className={`w-2 h-2 rounded-full shrink-0 ${isSupabaseConfigured ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]' : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.8)] animate-pulse'}`}></div>
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${isHostingerConfigured ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]' : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.8)] animate-pulse'}`}></div>
                       <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
-                        {isSupabaseConfigured ? 'Supabase Connected' : 'Supabase Disconnected'}
+                        {isHostingerConfigured ? 'Hostinger Connected' : 'Hostinger Not Connected'}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 md:gap-4">
-                      <div className={`w-2 h-2 rounded-full shrink-0 ${isSupabaseConfigured ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]' : 'bg-zinc-600'}`}></div>
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${isHostingerConfigured ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]' : 'bg-zinc-600'}`}></div>
                       <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
-                        {isSupabaseConfigured ? 'Cloud Sync Active' : 'Local Storage Mode'}
+                        {isHostingerConfigured ? 'Cloud Sync Active' : 'Local Storage Mode'}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 md:gap-4">
                       <Globe className="w-4 h-4 text-gray-600 shrink-0" />
                       <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 leading-tight">
-                        {isSupabaseConfigured ? 'Remote Backend' : 'Awaiting New Supabase'}
+                        {isHostingerConfigured ? 'Hostinger Database' : 'Preview: Browser Storage Only'}
                       </span>
                     </div>
                   </div>
