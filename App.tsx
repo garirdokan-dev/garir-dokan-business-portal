@@ -176,6 +176,12 @@ const App: React.FC = () => {
   }
 
   useEffect(() => {
+    // "/assets/" is the same page as "/assets": browsers that once followed the server's old
+    // slash-adding redirect keep using it, so drop a trailing slash without reloading the page
+    if (location.pathname.length > 1 && location.pathname.endsWith('/')) {
+      navigate(location.pathname.replace(/\/+$/, '') + location.search, { replace: true });
+      return;
+    }
     const path = location.pathname;
     const pathChanged = path !== lastPathname.current;
     const stateChanged = currentTargetPath !== lastTargetPath.current;
