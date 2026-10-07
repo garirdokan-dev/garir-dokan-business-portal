@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { login } from '../utils/auth.ts';
 import { 
   Lock, 
   User, 
@@ -391,25 +392,33 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      if (username === 'garir_dokan' && password === 'garirdokan07') {
-        setIsSuccess(true);
-        setIsLoading(false);
-        sessionStorage.setItem('gd_auth', 'true');
-        
-        setTimeout(() => {
-          onLoginSuccess();
-        }, 1300);
-      } else {
-        setIsLoading(false);
-        setErrorMsg('Invalid authorization passcode. Access denied.');
-        setIsShaking(true);
-        
-        setTimeout(() => {
-          setIsShaking(false);
-        }, 500);
-      }
-    }, 1300);
+    // The server checks the username and password; no login details are kept in this code.
+    const startedAt = Date.now();
+    login(username, password).then((result) => {
+      // keep the short "checking" animation even when the server answers at once
+      setTimeout(() => {
+        if (result.ok) {
+          setIsSuccess(true);
+          setIsLoading(false);
+
+          setTimeout(() => {
+            onLoginSuccess();
+          }, 1300);
+        } else {
+          setIsLoading(false);
+          setErrorMsg(
+            result.reason === 'locked' ? 'Too many attempts. Access locked for 15 minutes.'
+              : result.reason === 'offline' ? 'Cannot reach the server. Check your internet connection.'
+              : 'Invalid authorization passcode. Access denied.'
+          );
+          setIsShaking(true);
+
+          setTimeout(() => {
+            setIsShaking(false);
+          }, 500);
+        }
+      }, Math.max(0, 1300 - (Date.now() - startedAt)));
+    });
   };
 
   // Compute 3D rotation matrix including flip angle offsets

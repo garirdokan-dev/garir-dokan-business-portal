@@ -15,6 +15,15 @@ export const isHostingerConfigured =
 
 const API_BASE = '/api';
 
+/** Sent when the server says the login is missing or expired; the app then shows the login page. */
+export const LOGIN_REQUIRED_EVENT = 'portal:login-required';
+/** Sent right after a successful login, so parts of the app can refresh from the server. */
+export const LOGGED_IN_EVENT = 'portal:logged-in';
+
+const signalIfLoggedOut = (status: number) => {
+  if (status === 401 && typeof window !== 'undefined') window.dispatchEvent(new Event(LOGIN_REQUIRED_EVENT));
+};
+
 export type HostingerTable = 'documents' | 'assets';
 
 const request = async <T>(method: 'GET' | 'PUT' | 'DELETE', path: string, body?: unknown): Promise<T> => {
@@ -26,6 +35,7 @@ const request = async <T>(method: 'GET' | 'PUT' | 'DELETE', path: string, body?:
     cache: 'no-store',
   });
   if (!response.ok) {
+    signalIfLoggedOut(response.status);
     let detail = '';
     try {
       const data = await response.json();
@@ -56,7 +66,10 @@ const uploadDataUrl = async (dataUrl: string): Promise<string> => {
     body: blob,
     credentials: 'same-origin',
   });
-  if (!response.ok) throw new Error(`Hostinger database: uploading a file failed (${response.status})`);
+  if (!response.ok) {
+    signalIfLoggedOut(response.status);
+    throw new Error(`Hostinger database: uploading a file failed (${response.status})`);
+  }
   const stored = (await response.json()) as { url: string };
   return stored.url;
 };

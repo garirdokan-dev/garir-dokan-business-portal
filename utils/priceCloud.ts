@@ -10,7 +10,7 @@
  * whenever the window comes back into focus — the cloud copy is fetched and taken if it is newer.
  * The car being priced at the moment stays on each device; only the sheets and charges are shared.
  */
-import { hostinger, isHostingerConfigured, hasContent } from './hostinger.ts';
+import { hostinger, isHostingerConfigured, hasContent, LOGGED_IN_EVENT } from './hostinger.ts';
 import { withTimeout } from './storage.ts';
 import { queueFailure, markSynced } from './sync.ts';
 import { getStore, setStore, adoptStore, onStoreChanged, monthKey, monthRank, type PriceStore } from '../pricing/price/priceStore';
@@ -169,6 +169,8 @@ export const startPriceCloudSync = () => {
   setRemotePdfs(remotePdfs);
   onStoreChanged(schedulePush);
   void pullStore().then(backfillPdfs);
+  // the first fetch may have happened before logging in
+  window.addEventListener(LOGGED_IN_EVENT, () => { void pullStore().then(backfillPdfs); });
   // coming back to the tab is the natural moment another device may have changed something
   window.addEventListener('focus', () => { if (Date.now() - lastPull > 20000) void pullStore(); });
 };

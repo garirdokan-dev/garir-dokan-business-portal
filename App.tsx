@@ -43,7 +43,9 @@ import { DOC_TYPES_CONFIG } from './constants.tsx';
 import { addOrUpdateDocument, loadDocuments, deleteDocument, loadFooterSettings, loadAllHeaderSettings, loadHeroSettings,
   getCachedDocuments,
 } from './utils/storage.ts';
-import { isHostingerConfigured } from './utils/hostinger.ts';
+import { isHostingerConfigured, LOGIN_REQUIRED_EVENT } from './utils/hostinger.ts';
+import { checkSession, logout } from './utils/auth.ts';
+import { flushPending } from './utils/sync.ts';
 import DocumentForm from './components/DocumentForm.tsx';
 import DocumentPreview from './components/DocumentPreview.tsx';
 import ProInvoiceGenerator from './components/ProInvoiceGenerator.tsx';
@@ -61,9 +63,15 @@ const RUNNING_TEXTS = [
 const STATS_BG = "https://images.unsplash.com/photo-1486006920555-c77dcf18193c?auto=format&fit=crop&q=80&w=2500";
 
 const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return sessionStorage.getItem('gd_auth') === 'true';
-  });
+  // The server decides who is logged in (see utils/auth.ts); null while that check is running.
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    checkSession().then(state => setIsAuthenticated(state !== 'none'));
+    const onLoginRequired = () => setIsAuthenticated(false);
+    window.addEventListener(LOGIN_REQUIRED_EVENT, onLoginRequired);
+    return () => window.removeEventListener(LOGIN_REQUIRED_EVENT, onLoginRequired);
+  }, []);
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem('gd_theme') !== 'light'; // Default to dark if not set
@@ -80,8 +88,8 @@ const App: React.FC = () => {
   }, [isDarkMode]);
 
   const handleLogout = () => {
-    sessionStorage.removeItem('gd_auth');
     setIsAuthenticated(false);
+    void logout();
   };
 
   const [currentBanner, setCurrentBanner] = useState(0);
@@ -382,6 +390,7 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
+    if (isAuthenticated !== true) return;   // data is loaded once the login is confirmed
     const initData = async () => {
       startLoading();
 
@@ -394,6 +403,8 @@ const App: React.FC = () => {
       }
 
       try {
+        // send anything saved while offline or logged out first, so the fresh list includes it
+        await flushPending().catch(() => {});
         // independent of each other, so they run together instead of one after another
         const [docs] = await Promise.all([
           loadDocuments(),
@@ -410,7 +421,7 @@ const App: React.FC = () => {
     };
     
     initData();
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const bannerInterval = setInterval(() => {
@@ -537,6 +548,10 @@ const App: React.FC = () => {
       setMobilePreviewMode(false);
     }
   }, [editingDoc?.id, editingDoc?.type]);
+
+  if (isAuthenticated === null) {
+    return null;   // a moment while the server confirms the login
+  }
 
   if (!isAuthenticated) {
     return <LoginPage onLoginSuccess={() => setIsAuthenticated(true)} />;
