@@ -5,6 +5,7 @@ import PricingDesk from './pricing/PricingDesk';
 import { SyncStatus, SaveWarning, SyncFloatingBadge } from './components/SyncStatus.tsx';
 import { HomePriceCalculator } from './components/HomePriceCalculator.tsx';
 import { UndoToast, offerUndo } from './components/UndoToast.tsx';
+import { ResumeDraftBanner, readAutosave, writeAutosave, clearAutosave, type AutosaveEntry } from './components/ResumeDraftBanner.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { 
   Search, 
@@ -37,7 +38,7 @@ import {
   Image as ImageIcon,
   LogOut,
   Edit3,
-  Minus, Calculator } from 'lucide-react';
+  Minus, Calculator, FilePen } from 'lucide-react';
 import { BusinessDocument, DocumentType, FooterSettings, HeaderSettings, HeroSettings } from './types.ts';
 import { DOC_TYPES_CONFIG } from './constants.tsx';
 import { addOrUpdateDocument, loadDocuments, deleteDocument, loadFooterSettings, loadAllHeaderSettings, loadHeroSettings,
@@ -132,6 +133,11 @@ const App: React.FC = () => {
   const [activeType, setActiveType] = useState<DocumentType | null>(null);
   const [showProGenerator, setShowProGenerator] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
+  const [savedAsDraft, setSavedAsDraft] = useState(false);       // which message the save toast shows
+  const [showDraftsOnly, setShowDraftsOnly] = useState(false);   // Records filter
+  // auto-save: work left in an editor that was never saved, offered back on the next visit
+  const [resumeEntry, setResumeEntry] = useState<AutosaveEntry | null>(null);
+  const editorBaseline = useRef<string | null>(null);           // the form as it opened, to tell real edits apart
   const [globalFooter, setGlobalFooter] = useState<FooterSettings | undefined>(undefined);
   const [globalHeaders, setGlobalHeaders] = useState<Record<DocumentType, HeaderSettings> | undefined>(undefined);
   const [heroSettings, setHeroSettings] = useState<HeroSettings>({
@@ -480,9 +486,80 @@ const App: React.FC = () => {
     setEditingDoc(null);
     setDraftDoc(null);
     setShowProGenerator(false);
+    clearAutosave();                         // saved — nothing left to recover
+    editorBaseline.current = null;
+    setSavedAsDraft(doc.status === 'draft');
     setShowSaveToast(true);
     finishLoading();
     setTimeout(() => setShowSaveToast(false), 3000);
+  };
+
+  /* ---------------- auto-save while an editor is open ---------------- */
+  const editorOpen = !!editingDoc || showProGenerator;
+
+  // Remember how the form looked when it opened; only real edits are worth keeping. An editor
+  // fills a few fields by itself as it opens (document number, date), so whatever it settles to
+  // in its first second is the starting point, not something the operator typed.
+  const editorOpenedAt = useRef(0);
+  useEffect(() => {
+    if (!editorOpen) { editorBaseline.current = null; editorOpenedAt.current = 0; return; }
+    if (!editorOpenedAt.current) editorOpenedAt.current = Date.now();
+    const settling = Date.now() - editorOpenedAt.current < 1000;
+    if (draftDoc && (editorBaseline.current === null || settling)) editorBaseline.current = JSON.stringify(draftDoc);
+  }, [editorOpen, draftDoc]);
+
+  useEffect(() => {
+    if (!editorOpen || !draftDoc || editorBaseline.current === null) return;
+    if (JSON.stringify(draftDoc) === editorBaseline.current) return;
+    const t = window.setTimeout(() => writeAutosave(draftDoc), 800);
+    return () => window.clearTimeout(t);
+  }, [editorOpen, draftDoc]);
+
+  // on arrival: work that was never saved, from a closed tab or a crash
+  useEffect(() => {
+    const entry = readAutosave();
+    if (entry) setResumeEntry(entry);
+  }, []);
+
+  // When the login runs out (or Log Out is pressed) while an editor is open, the login page hides
+  // the editor. Close it and offer the auto-saved copy after the next login; otherwise the editor
+  // would come back showing the form as it was before the edits.
+  useEffect(() => {
+    if (isAuthenticated !== false || !editorOpen) return;
+    const edited = draftDoc && editorBaseline.current !== null && JSON.stringify(draftDoc) !== editorBaseline.current;
+    if (edited) writeAutosave(draftDoc as Partial<BusinessDocument>);
+    const entry = readAutosave();
+    if (entry) setResumeEntry(entry);
+    setEditingDoc(null);
+    setShowProGenerator(false);
+    setDraftDoc(null);
+    editorBaseline.current = null;
+  }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Reopen work that was never saved. It counts as edited from the start, so Discard still offers Undo. */
+  const reopenUnsaved = (doc: Partial<BusinessDocument>) => {
+    editorBaseline.current = '';              // nothing saved to compare against
+    editorOpenedAt.current = Date.now() - 2000;
+    setEditingDoc(doc as BusinessDocument);   // both editors open from editingDoc
+  };
+
+  const resumeAutosave = () => {
+    if (!resumeEntry) return;
+    setResumeEntry(null);
+    reopenUnsaved(resumeEntry.doc);
+  };
+
+  /** Discard with a way back: the edited form can be reopened for ten seconds. */
+  const discardEditor = (close: () => void) => {
+    const edited = draftDoc && editorBaseline.current !== null && JSON.stringify(draftDoc) !== editorBaseline.current;
+    const copy = edited ? (draftDoc as Partial<BusinessDocument>) : null;
+    close();
+    setDraftDoc(null);
+    editorBaseline.current = null;
+    clearAutosave();
+    if (copy) {
+      offerUndo('Unsaved changes discarded', () => { reopenUnsaved(copy); });
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -514,6 +591,7 @@ const App: React.FC = () => {
       doc.docNumber, doc.clientName, doc.clientPhone, doc.clientAddress,
       doc.vehicleTitle, doc.chassisNumber, doc.engineNumber, doc.brand, doc.model,
       doc.yearModel, doc.color, doc.garageNumber, doc.vehiclePrice, doc.date,
+      doc.status === 'draft' ? 'draft' : undefined,
     ];
     const d = doc.date ? new Date(doc.date) : null;
     if (d && !isNaN(d.getTime())) {
@@ -541,11 +619,15 @@ const App: React.FC = () => {
 
   const filteredDocs = documents.filter(doc => {
     const matchesType = activeType ? doc.type === activeType : true;
-    return matchesType && matchesQuery(doc, searchQuery);
+    const matchesDraft = showDraftsOnly ? doc.status === 'draft' : true;
+    return matchesType && matchesDraft && matchesQuery(doc, searchQuery);
   }).sort((a, b) => b.createdAt - a.createdAt);
 
-  const totalRecords = documents.length;
-  const totalAssetValue = documents.reduce((sum, doc) => sum + (doc.vehiclePrice || 0), 0);
+  // the headline figures count finished documents; drafts are shown on their own
+  const finalDocs = documents.filter(d => d.status !== 'draft');
+  const draftCount = documents.length - finalDocs.length;
+  const totalRecords = finalDocs.length;
+  const totalAssetValue = finalDocs.reduce((sum, doc) => sum + (doc.vehiclePrice || 0), 0);
   
   const getCountByType = (type: DocumentType) => documents.filter(doc => doc.type === type).length;
 
@@ -601,12 +683,19 @@ const App: React.FC = () => {
       {showSaveToast && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] bg-green-600 text-white px-8 py-4 rounded-2xl font-black flex items-center gap-3 shadow-2xl shadow-green-900/40 animate-in slide-in-from-top-10">
           <CheckCircle2 className="w-6 h-6" />
-          <span className="uppercase tracking-widest text-xs">Document Secured Successfully</span>
+          <span className="uppercase tracking-widest text-xs">{savedAsDraft ? 'Saved as Draft' : 'Document Secured Successfully'}</span>
         </div>
       )}
 
       {(editingDoc || showProGenerator || previewingDoc || showGlobalSettings) && <SyncFloatingBadge />}
       <UndoToast />
+      {resumeEntry && !editorOpen && (
+        <ResumeDraftBanner
+          entry={resumeEntry}
+          onResume={resumeAutosave}
+          onDismiss={() => { clearAutosave(); setResumeEntry(null); }}
+        />
+      )}
 
       <nav className="fixed top-0 left-0 right-0 z-50 px-4 md:px-10 py-3 md:py-6 flex justify-between items-center backdrop-blur-md bg-black/20 border-b border-white/5 print:hidden no-print">
         <div className="flex items-center gap-2 md:gap-3 cursor-pointer" onClick={() => {setViewMode('landing'); setActiveType(null); setIsSidebarOpen(false);}}>
@@ -966,6 +1055,11 @@ const App: React.FC = () => {
                       </div>
                       <h4 className="text-5xl sm:text-6xl md:text-8xl font-black tracking-tighter mb-6 group-hover:translate-x-2 transition-transform duration-700">
                         {totalRecords.toString().padStart(2, '0')}<span className="text-xl sm:text-2xl md:text-3xl text-gray-400 ml-3 md:ml-5 font-bold tracking-normal opacity-80">Total Files</span>
+                        {draftCount > 0 && (
+                          <span className="ml-3 align-middle inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[10px] md:text-xs font-black uppercase tracking-widest text-amber-500">
+                            + {draftCount} draft{draftCount > 1 ? 's' : ''}
+                          </span>
+                        )}
                       </h4>
                       <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden mb-4">
                         <div className="h-full bg-gradient-to-r from-red-900 to-red-600 animate-pulse" style={{width: '75%'}}></div>
@@ -1089,7 +1183,7 @@ const App: React.FC = () => {
           {/* Records Navigation Tabs */}
           <div className="mb-10 flex flex-wrap items-center gap-2 md:gap-4 bg-white/5 p-2 md:p-3 rounded-2xl md:rounded-[2.5rem] border border-white/5 backdrop-blur-xl animate-in slide-in-from-top-4 duration-500">
              <button 
-               onClick={() => setActiveType(null)}
+               onClick={() => { setActiveType(null); setShowDraftsOnly(false); }}
                className={`px-4 md:px-8 py-2 md:py-3.5 rounded-full font-black text-[9px] md:text-[11px] uppercase tracking-widest transition-all flex items-center gap-2 md:gap-3 ${activeType === null ? 'bg-red-700 text-white shadow-lg shadow-red-700/20' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
              >
                <LayoutDashboard className="w-4 h-4" />
@@ -1115,6 +1209,18 @@ const App: React.FC = () => {
                  </button>
                );
              })}
+
+             {(draftCount > 0 || showDraftsOnly) && (
+               <button
+                 onClick={() => setShowDraftsOnly(v => !v)}
+                 className={`px-4 md:px-6 py-2 md:py-3.5 rounded-full font-black text-[9px] md:text-[11px] uppercase tracking-widest transition-all flex items-center gap-2 border ${
+                   showDraftsOnly ? 'bg-amber-500/15 border-amber-500/50 text-amber-500' : 'border-amber-500/20 text-gray-400 hover:text-white hover:bg-white/5'}`}
+               >
+                 <FilePen className="w-4 h-4 text-amber-500" />
+                 <span>Drafts</span>
+                 <span className="px-2 py-0.5 rounded-md text-[9px] bg-white/10">{draftCount}</span>
+               </button>
+             )}
           </div>
 
           <div className="flex-1 bg-white/5 border border-white/5 rounded-2xl md:rounded-[3.5rem] overflow-hidden backdrop-blur-xl animate-in slide-in-from-bottom-10 duration-700">
@@ -1142,7 +1248,12 @@ const App: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 md:px-12 py-5 md:py-7">
-                        <p className="text-sm md:text-base font-black text-white group-hover/row:text-red-700 transition-colors">{doc.docNumber}</p>
+                        <p className="text-sm md:text-base font-black text-white group-hover/row:text-red-700 transition-colors">
+                          <span className="whitespace-nowrap">{doc.docNumber}</span>
+                          {doc.status === 'draft' && (
+                            <span className="ml-2 inline-block align-middle rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-amber-500">Draft</span>
+                          )}
+                        </p>
                         <p className="text-[10px] font-bold text-gray-400 uppercase mt-1">Ref No: {doc.id.slice(0,6)}</p>
                       </td>
                       <td className="px-6 md:px-12 py-5 md:py-7">
@@ -1188,7 +1299,8 @@ const App: React.FC = () => {
                 <ProInvoiceGenerator 
                   initialData={editingDoc}
                   onSave={handleSave} 
-                  onCancel={() => setEditingDoc(null)} 
+                  onCancel={() => discardEditor(() => setEditingDoc(null))}
+                  onChange={setDraftDoc}
                   footerSettings={globalFooter}
                   headerSettings={globalHeaders?.[editingDoc.type as DocumentType]}
                 />
@@ -1196,7 +1308,7 @@ const App: React.FC = () => {
                 <DocumentForm 
                   initialData={editingDoc} 
                   onSave={handleSave} 
-                  onCancel={() => { setEditingDoc(null); setMobilePreviewMode(false); }}
+                  onCancel={() => discardEditor(() => { setEditingDoc(null); setMobilePreviewMode(false); })}
                   onChange={setDraftDoc}
                   headerSettings={globalHeaders?.[editingDoc.type as DocumentType]}
                   showPreviewToggle={true}
@@ -1286,7 +1398,8 @@ const App: React.FC = () => {
       {showProGenerator && (
         <ProInvoiceGenerator 
           onSave={handleSave} 
-          onCancel={() => setShowProGenerator(false)} 
+          onCancel={() => discardEditor(() => setShowProGenerator(false))}
+          onChange={setDraftDoc}
           footerSettings={globalFooter}
           headerSettings={globalHeaders?.[DocumentType.PRO_INVOICE]}
         />

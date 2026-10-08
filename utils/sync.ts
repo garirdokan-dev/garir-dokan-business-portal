@@ -48,6 +48,9 @@ const readQueue = (): PendingItem[] => {
   }
 };
 
+/** What is still waiting to be retried (read-only), so a server refresh can keep those changes. */
+export const getPendingItems = (): PendingItem[] => readQueue();
+
 const writeQueue = (items: PendingItem[]) => {
   try {
     window.localStorage.setItem(QUEUE_KEY, JSON.stringify(items));

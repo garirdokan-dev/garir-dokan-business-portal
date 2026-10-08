@@ -1,7 +1,7 @@
 
 import { BusinessDocument, Asset, DocumentType, FooterSettings, HeaderSettings, HeroSettings } from '../types.ts';
 import { hostinger, isHostingerConfigured, hasContent } from './hostinger.ts';
-import { queueFailure, markSynced, registerReplay, type PendingItem } from './sync.ts';
+import { queueFailure, markSynced, registerReplay, getPendingItems, type PendingItem } from './sync.ts';
 
 export interface LogoSettings {
   logoUrl?: string;
@@ -102,6 +102,33 @@ export const withTimeout = async <T>(work: PromiseLike<T>, label: string): Promi
   }
 };
 
+/* A list fetched from the server does not contain a save or delete that failed and is still
+ * waiting in the retry queue. It must not replace this browser's copy of those records, or the
+ * retry finds nothing to send and the change is lost. A waiting save keeps the local version;
+ * a waiting delete keeps the record out. */
+const keepWaitingChanges = <T extends { id: string }>(kind: 'document' | 'asset', remote: T[], local: T[]): T[] => {
+  const waiting = getPendingItems().filter(i => i.kind === kind);
+  if (!waiting.length) return remote;
+  const localById = new Map(local.map(r => [r.id, r]));
+  let merged = remote.slice();
+  for (const item of waiting) {
+    const at = merged.findIndex(r => r.id === item.recordId);
+    if (item.op === 'delete') {
+      if (at >= 0) merged.splice(at, 1);
+      continue;
+    }
+    const mine = localById.get(item.recordId);
+    if (!mine) continue;
+    if (at >= 0) merged[at] = mine;
+    else merged = [mine, ...merged];
+  }
+  return merged;
+};
+
+/** A change to this setting is waiting to be retried, so this browser's copy is the newest. */
+const settingWaiting = (recordId: string): boolean =>
+  getPendingItems().some(i => i.recordId === recordId && i.op === 'upsert');
+
 /** The local copy, read without touching the network. */
 export const getCachedDocuments = (): BusinessDocument[] => getLocalItem<BusinessDocument[]>('gd_documents', []);
 
@@ -109,7 +136,8 @@ export const loadDocuments = async (): Promise<BusinessDocument[]> => {
   if (isHostingerConfigured) {
     try {
       const rows = await withTimeout(hostinger.list<BusinessDocument>('documents'), 'loading documents');
-      const remoteDocs = Array.isArray(rows) ? rows : [];
+      const remoteDocs = keepWaitingChanges('document', Array.isArray(rows) ? rows : [],
+        getLocalItem<BusinessDocument[]>('gd_documents', []));
       setLocalItem('gd_documents', remoteDocs);
       return remoteDocs;
     } catch (e) {
@@ -170,7 +198,8 @@ export const loadAssets = async (): Promise<Asset[]> => {
   if (isHostingerConfigured) {
     try {
       const rows = await withTimeout(hostinger.list<Asset>('assets'), 'loading assets');
-      const remoteAssets = Array.isArray(rows) ? rows : [];
+      const remoteAssets = keepWaitingChanges('asset', Array.isArray(rows) ? rows : [],
+        getLocalItem<Asset[]>('gd_assets', []));
       setLocalItem('gd_assets', remoteAssets);
       return remoteAssets;
     } catch (e) {
@@ -227,7 +256,7 @@ export const deleteAsset = async (id: string): Promise<Asset[]> => {
 
 // User Preferences: Hostinger database & local cache
 export const loadPreferences = async (): Promise<UserPreferences> => {
-  if (isHostingerConfigured) {
+  if (isHostingerConfigured && !settingWaiting('user_prefs')) {
     try {
       const data = await withTimeout(hostinger.getPreference<any>('user_prefs'), 'loading preferences');
       if (hasContent(data)) {
@@ -270,7 +299,7 @@ export const getTypePreferences = async (type: DocumentType): Promise<LogoSettin
 
 // Global Footer Settings Utils
 export const loadFooterSettings = async (): Promise<FooterSettings> => {
-  if (isHostingerConfigured) {
+  if (isHostingerConfigured && !settingWaiting('global_footer')) {
     try {
       const data = await withTimeout(hostinger.getPreference<any>('global_footer'), 'loading preferences');
       if (hasContent(data)) {
@@ -299,7 +328,7 @@ export const saveFooterSettings = async (settings: FooterSettings) => {
 
 // Global Header Settings Utils
 export const loadAllHeaderSettings = async (): Promise<Record<DocumentType, HeaderSettings>> => {
-  if (isHostingerConfigured) {
+  if (isHostingerConfigured && !settingWaiting('global_headers_v2')) {
     try {
       const data = await withTimeout(hostinger.getPreference<any>('global_headers_v2'), 'loading preferences');
       if (hasContent(data)) {
@@ -340,7 +369,7 @@ export const saveHeaderSettings = async (settings: HeaderSettings) => {
 
 // Hero Banner Settings Utils
 export const loadHeroSettings = async (): Promise<HeroSettings> => {
-  if (isHostingerConfigured) {
+  if (isHostingerConfigured && !settingWaiting('hero_banner')) {
     try {
       const data = await withTimeout(hostinger.getPreference<any>('hero_banner'), 'loading preferences');
       if (hasContent(data)) {

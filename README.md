@@ -97,6 +97,32 @@ word must appear somewhere, and separators are ignored on a second pass, so:
 - `september`, `সেপ্টেম্বর`, `09-2026`, `2026-08` — finds by date, in English or Bangla
 
 
+## Drafts and auto-save
+
+Every editor — the four document editors and the product-invoice editor — has **Save as Draft**
+beside the main button. A draft may be unfinished (it skips the buyer-name check); opening it again
+and pressing the main button makes it final. A document carries `status: 'draft' | 'final'`; one
+without a status is final, so every document saved before this feature stays final. Drafts are
+stored on the server like any document, so every computer sees them.
+
+- **Records**: drafts carry an amber DRAFT mark, a **Drafts** chip lists only drafts, and typing
+  "draft" in search finds them. **All Records** clears the filter.
+- **Home**: Total Files and the total value count finished documents only; drafts are shown on
+  their own as "+ n drafts".
+- **Printing**: a draft prints exactly like a finished document (no watermark, by choice).
+- **Spreadsheet export**: a Status column says Draft or Final.
+
+**Auto-save.** While an editor is open, its form is copied to this browser about a second after
+each change (`gd_autosave_v1`), starting from how the form settled when it opened, so a form that
+was only opened is never saved. Saving — as a draft or final — clears the copy. If the tab is closed,
+the browser stops, or the login runs out (or Log Out is pressed) with a form open, the next visit
+after logging in shows "Unsaved work found" with **Resume**. Pressing **Discard** on an edited form
+offers **Undo** for ten seconds; resumed work counts as edited, so it gets the same Undo. The copy
+never enters Records by itself.
+
+Also fixed: the product-invoice editor crashed when a document's payment list was empty
+(`payments?.[0].amount`); it now reads `payments?.[0]?.amount`.
+
 ## Undo after a delete
 
 Deleting a document (Records) or an asset (Asset Library) still asks for confirmation and still
@@ -129,6 +155,11 @@ no connection. What happens when the cloud copy fails is now visible and recover
 - **Nothing is lost.** A failed write is queued in `gd_pending_sync` and replayed automatically
   when the connection returns, on an interval, and on demand. Repeated edits of one record collapse
   into a single queued entry, and the replay always sends the newest local copy.
+- **A refresh never wipes a waiting change** (fixed Oct 2026). Lists and settings read from the
+  server are merged with the retry queue in `utils/storage.ts`: a record whose save is waiting keeps
+  its local version, one whose delete is waiting stays out, and a waiting setting is not replaced by
+  the server's older copy. Before this, saving the next document re-read the list from the server
+  and dropped the waiting one, so its retry found nothing to send.
 - **No hanging.** Every cloud call is time-bounded (12s); a blocked or flaky connection can no
   longer freeze saving, deleting or restoring — it falls into the queue instead.
 - **Backup & Restore** lives in Global Settings. The backup is one JSON file holding every
@@ -162,4 +193,8 @@ The Garir Dokan Operations Desk is built into this site as the **Pricing Desk** 
 - The page reads the site navigation's height at runtime and offsets itself by that amount, so it
   stays clear of the bar at every breakpoint.
 - Extra dependencies for the tools: `exceljs`, `jszip`, `xlsx`, `motion`.
+- `jspdf` and `html2canvas` were removed (Oct 2026): no code imported them — documents are printed
+  through the browser — so the built JavaScript is byte-for-byte the same without them. The same
+  `npm uninstall` also pruned leftover `@supabase/*` entries from `package-lock.json`; Supabase was
+  already gone from `package.json` and those entries were never installed.
 

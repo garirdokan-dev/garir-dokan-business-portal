@@ -44,7 +44,7 @@ const toCsv = (docs: BusinessDocument[]): string => {
     const s = v === null || v === undefined ? '' : String(v);
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  const rows = [['Type', 'Doc number', 'Date', 'Client', 'Phone', 'Address', 'Items', 'Total', 'Created']];
+  const rows = [['Type', 'Doc number', 'Date', 'Client', 'Phone', 'Address', 'Items', 'Total', 'Created', 'Status']];
   for (const d of docs) {
     const items = Array.isArray((d as any).items) ? (d as any).items : [];
     const total = items.reduce(
@@ -52,6 +52,7 @@ const toCsv = (docs: BusinessDocument[]): string => {
     rows.push([
       d.type, d.docNumber, d.date, d.clientName, (d as any).clientPhone || '', d.clientAddress || '',
       String(items.length), String(total), d.createdAt ? new Date(d.createdAt).toISOString().slice(0, 10) : '',
+      d.status === 'draft' ? 'Draft' : 'Final',
     ].map(esc));
   }
   return rows.map(r => r.join(',')).join('\n');

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Save, X, Car, CreditCard, User, Upload, Type, Landmark, FileText, Truck, Receipt, FileCheck, Layers, Gauge, Image as ImageIcon, Database, Edit3, Calendar, AlignLeft, AlignCenter, AlignRight, AlignJustify } from 'lucide-react';
+import { Plus, Trash2, Save, X, Car, CreditCard, User, Upload, Type, Landmark, FileText, Truck, Receipt, FileCheck, Layers, Gauge, Image as ImageIcon, Database, Edit3, Calendar, AlignLeft, AlignCenter, AlignRight, AlignJustify, FilePen } from 'lucide-react';
 import { BusinessDocument, DocumentType, PaymentEntry, Asset, AssetType, HeaderSettings } from '../types';
 import { DOC_TYPES_CONFIG } from '../constants';
 import AssetLibrary from './AssetLibrary';
@@ -183,7 +183,12 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
       return;
     }
     
-    onSave(formData as BusinessDocument);
+    onSave({ ...formData, status: 'final' } as BusinessDocument);
+  };
+
+  // A draft may be unfinished, so it skips the buyer-name check; it is finished later with the main button.
+  const handleSaveDraft = () => {
+    onSave({ ...formData, status: 'draft' } as BusinessDocument);
   };
 
   const inputClass = "w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-sm font-medium outline-none focus:border-red-700/50 focus:bg-white/[0.08] text-white placeholder:text-gray-500 transition-all focus:ring-4 focus:ring-red-700/10";
@@ -823,6 +828,15 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
         >
           <Save className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 shrink-0" /> 
           <span className="truncate">Commit Record<span className="hidden sm:inline"> to Storage</span></span>
+        </button>
+        <button 
+          type="button" 
+          onClick={handleSaveDraft} 
+          className="px-4 sm:px-6 md:px-8 bg-white/5 text-gray-200 font-black py-4 md:py-5 rounded-2xl md:rounded-[2rem] border border-amber-500/30 hover:bg-amber-500/10 active:scale-95 transition-all uppercase tracking-widest text-[9px] sm:text-[10px] md:text-xs shrink-0 flex items-center justify-center gap-2"
+        >
+          <FilePen className="w-4 h-4 text-amber-500 shrink-0" />
+          <span className="sm:hidden">Draft</span>
+          <span className="hidden sm:inline">Save as Draft</span>
         </button>
         <button 
           type="button" 

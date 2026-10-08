@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, X, Upload, Download, Image as ImageIcon, Layers, User, Calendar, CreditCard, ShoppingBag, Plus, Trash2, Database, Eye, EyeOff, AlignLeft, AlignCenter, AlignRight, AlignJustify, Edit3, Minus } from 'lucide-react';
+import { Save, X, Upload, Download, Image as ImageIcon, Layers, User, Calendar, CreditCard, ShoppingBag, Plus, Trash2, Database, Eye, EyeOff, AlignLeft, AlignCenter, AlignRight, AlignJustify, Edit3, Minus, FilePen } from 'lucide-react';
 import { BusinessDocument, DocumentType, Asset, AssetType, InvoiceItem, FooterSettings, HeaderSettings } from '../types';
 import DocumentPreview from './DocumentPreview';
 import AssetLibrary from './AssetLibrary';
@@ -11,11 +11,13 @@ interface ProInvoiceGeneratorProps {
   initialData?: Partial<BusinessDocument>;
   onSave: (doc: BusinessDocument) => void;
   onCancel: () => void;
+  /** called with the current form on every change, for auto-save */
+  onChange?: (doc: Partial<BusinessDocument>) => void;
   footerSettings?: FooterSettings;
   headerSettings?: HeaderSettings;
 }
 
-const ProInvoiceGenerator: React.FC<ProInvoiceGeneratorProps> = ({ initialData, onSave, onCancel, footerSettings, headerSettings }) => {
+const ProInvoiceGenerator: React.FC<ProInvoiceGeneratorProps> = ({ initialData, onSave, onCancel, onChange, footerSettings, headerSettings }) => {
   const [assetPickerConfig, setAssetPickerConfig] = useState<{ open: boolean; target: 'logoUrl' | { type: 'itemImage'; index: number }; type: AssetType } | null>(null);
   
   // Initialize form data with initialData or defaults
@@ -230,9 +232,17 @@ const ProInvoiceGenerator: React.FC<ProInvoiceGeneratorProps> = ({ initialData, 
   };
 
   const handleSave = () => {
-    const finalDoc = { ...formData, vehiclePrice: calculateSubtotal() } as BusinessDocument;
+    const finalDoc = { ...formData, vehiclePrice: calculateSubtotal(), status: 'final' } as BusinessDocument;
     onSave(finalDoc);
   };
+
+  const handleSaveDraft = () => {
+    const draftDoc = { ...formData, vehiclePrice: calculateSubtotal(), status: 'draft' } as BusinessDocument;
+    onSave(draftDoc);
+  };
+
+  // let the app keep an auto-saved copy while this editor is open
+  useEffect(() => { onChange?.(formData); }, [formData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const inputClass = "w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-sm font-medium outline-none focus:border-red-700/50 focus:bg-white/[0.08] text-white placeholder:text-gray-500 transition-all focus:ring-4 focus:ring-red-700/10";
   const labelClass = "block text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-2 ml-1";
@@ -422,7 +432,7 @@ const ProInvoiceGenerator: React.FC<ProInvoiceGeneratorProps> = ({ initialData, 
                     <input 
                       type="number" 
                       placeholder="0.00" 
-                      value={formData.payments?.[0].amount ?? ''} 
+                      value={formData.payments?.[0]?.amount ?? ''} 
                       onChange={(e) => {
                         const newPayments = [...(formData.payments || [])];
                         newPayments[0] = { ...newPayments[0], amount: parseFloat(e.target.value) || 0 };
@@ -465,6 +475,11 @@ const ProInvoiceGenerator: React.FC<ProInvoiceGeneratorProps> = ({ initialData, 
             <button onClick={handleSave} className="flex-1 bg-red-700 text-white font-black py-4 md:py-5 px-2 sm:px-6 rounded-2xl md:rounded-[2.5rem] hover:bg-red-800 flex items-center justify-center gap-2 md:gap-4 transition-all active:scale-95 shadow-2xl shadow-red-700/40 uppercase tracking-[0.1em] md:tracking-[0.3em] text-[9px] sm:text-[10px] md:text-xs border border-red-600/50">
               <Save size={16} className="md:w-6 md:h-6 shrink-0" /> 
               <span className="truncate">Commit Record<span className="hidden sm:inline"> to Storage</span></span>
+            </button>
+            <button onClick={handleSaveDraft} className="px-4 sm:px-6 md:px-8 bg-white/5 text-gray-200 font-black py-4 md:py-5 rounded-2xl md:rounded-[2.5rem] border border-amber-500/30 hover:bg-amber-500/10 active:scale-95 transition-all uppercase tracking-widest text-[9px] sm:text-[10px] md:text-xs shrink-0 flex items-center justify-center gap-2">
+              <FilePen size={16} className="text-amber-500 shrink-0" />
+              <span className="sm:hidden">Draft</span>
+              <span className="hidden sm:inline">Save as Draft</span>
             </button>
             <button onClick={onCancel} className="px-5 sm:px-8 md:px-12 bg-white/5 text-gray-500 font-black py-4 md:py-5 rounded-2xl md:rounded-[2.5rem] border border-white/10 hover:bg-white/10 hover:text-white active:scale-95 transition-all uppercase tracking-[0.1em] md:tracking-[0.3em] text-[9px] sm:text-[10px] md:text-xs shrink-0">
               Discard

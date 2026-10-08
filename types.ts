@@ -92,6 +92,8 @@ export interface PageSettings {
 }
 
 export interface BusinessDocument {
+  /** 'draft' = saved but not finished. Missing means final, so every older document stays final. */
+  status?: 'draft' | 'final';
   id: string;
   type: DocumentType;
   docNumber: string;
