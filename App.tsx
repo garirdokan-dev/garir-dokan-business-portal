@@ -588,11 +588,16 @@ const App: React.FC = () => {
 
   const searchableText = (doc: BusinessDocument): string => {
     const parts: (string | number | undefined)[] = [
-      doc.docNumber, doc.clientName, doc.clientPhone, doc.clientAddress,
+      doc.docNumber, doc.clientName, doc.acName, doc.clientPhone, doc.clientAddress,
       doc.vehicleTitle, doc.chassisNumber, doc.engineNumber, doc.brand, doc.model,
       doc.yearModel, doc.color, doc.garageNumber, doc.vehiclePrice, doc.date,
       doc.status === 'draft' ? 'draft' : undefined,
     ];
+    if (doc.items && doc.items.length > 0) {
+      doc.items.forEach(item => {
+        if (item.description) parts.push(item.description);
+      });
+    }
     const d = doc.date ? new Date(doc.date) : null;
     if (d && !isNaN(d.getTime())) {
       const day = String(d.getDate()).padStart(2, '0');
@@ -604,6 +609,34 @@ const App: React.FC = () => {
       );
     }
     return parts.filter(Boolean).join(' ').toLowerCase();
+  };
+
+  const getDocRecipient = (doc: BusinessDocument): string => {
+    if (doc.type === DocumentType.QUOTATION || doc.type === DocumentType.BILL) {
+      return (doc.acName || doc.clientName || '').trim() || '—';
+    }
+    return (doc.clientName || doc.acName || '').trim() || '—';
+  };
+
+  const getDocCarOrItemName = (doc: BusinessDocument): string => {
+    if (doc.type === DocumentType.PRO_INVOICE) {
+      if (doc.items && doc.items.length > 0) {
+        const firstDesc = doc.items[0]?.description?.trim();
+        if (firstDesc) {
+          const firstLine = firstDesc.split('\n')[0].trim();
+          return doc.items.length > 1 ? `${firstLine} (+${doc.items.length - 1} more)` : firstLine;
+        }
+      }
+    }
+
+    let title = doc.vehicleTitle?.trim() || '';
+    if (!title) {
+      title = [doc.brand, doc.model].filter(Boolean).map(s => s!.trim()).join(' ');
+    }
+    if (title) {
+      return title.split('\n')[0].trim();
+    }
+    return '';
   };
 
   // "inv 1" finds INV-000001: each word must appear, and separators are ignored on a second pass
@@ -1225,55 +1258,85 @@ const App: React.FC = () => {
 
           <div className="flex-1 bg-white/5 border border-white/5 rounded-2xl md:rounded-[3.5rem] overflow-hidden backdrop-blur-xl animate-in slide-in-from-bottom-10 duration-700">
             <div className="overflow-x-auto">
-              <table className="w-full text-left min-w-[800px] lg:min-w-0">
+              <table className="w-full text-left table-fixed min-w-[960px]">
+                <colgroup>
+                  <col className="w-[14%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[28%]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[13%]" />
+                </colgroup>
                 <thead className="bg-white/5 border-b border-white/5">
                   <tr className="text-[11px] font-black text-gray-500 uppercase tracking-[0.2em]">
-                    <th className="px-6 md:px-12 py-6 md:py-8">Category</th>
-                    <th className="px-6 md:px-12 py-6 md:py-8">Document / ID</th>
-                    <th className="px-6 md:px-12 py-6 md:py-8">Recipient</th>
-                    <th className="px-6 md:px-12 py-6 md:py-8">Chassis No</th>
-                    <th className="px-6 md:px-12 py-6 md:py-8">Valuation</th>
-                    <th className="px-6 md:px-12 py-6 md:py-8 text-right">Operations</th>
+                    <th className="w-[14%] px-4 md:px-8 py-5 md:py-7">Category</th>
+                    <th className="w-[18%] px-4 md:px-8 py-5 md:py-7">Document / ID</th>
+                    <th className="w-[28%] px-4 md:px-8 py-5 md:py-7">Recipient</th>
+                    <th className="w-[15%] px-4 md:px-8 py-5 md:py-7">Chassis No</th>
+                    <th className="w-[12%] px-4 md:px-8 py-5 md:py-7">Valuation</th>
+                    <th className="w-[13%] px-4 md:px-8 py-5 md:py-7 text-right">Operations</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {filteredDocs.map((doc) => (
-                    <tr key={doc.id} className="hover:bg-white/5 transition-all group/row">
-                      <td className="px-6 md:px-12 py-5 md:py-7">
-                        <div className="flex items-center gap-4">
-                          <div className={`p-3 rounded-2xl transition-all group-hover/row:scale-110 ${DOC_TYPES_CONFIG[doc.type].bgColor} ${DOC_TYPES_CONFIG[doc.type].color}`}>
-                            {DOC_TYPES_CONFIG[doc.type].icon}
+                  {filteredDocs.map((doc) => {
+                    const recipientName = getDocRecipient(doc);
+                    const carOrItemName = getDocCarOrItemName(doc);
+
+                    return (
+                      <tr key={doc.id} className="hover:bg-white/5 transition-all group/row">
+                        <td className="w-[14%] px-4 md:px-8 py-5 md:py-7">
+                          <div className="flex items-center gap-3 md:gap-4">
+                            <div className={`p-2.5 md:p-3 rounded-2xl transition-all group-hover/row:scale-110 shrink-0 ${DOC_TYPES_CONFIG[doc.type].bgColor} ${DOC_TYPES_CONFIG[doc.type].color}`}>
+                              {DOC_TYPES_CONFIG[doc.type].icon}
+                            </div>
+                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest truncate hidden sm:block">
+                              {DOC_TYPES_CONFIG[doc.type].label}
+                            </p>
                           </div>
-                          <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest hidden sm:block">{DOC_TYPES_CONFIG[doc.type].label}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 md:px-12 py-5 md:py-7">
-                        <p className="text-sm md:text-base font-black text-white group-hover/row:text-red-700 transition-colors">
-                          <span className="whitespace-nowrap">{doc.docNumber}</span>
-                          {doc.status === 'draft' && (
-                            <span className="ml-2 inline-block align-middle rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-amber-500">Draft</span>
+                        </td>
+                        <td className="w-[18%] px-4 md:px-8 py-5 md:py-7">
+                          <p className="text-sm md:text-base font-black text-white group-hover/row:text-red-700 transition-colors truncate">
+                            <span className="whitespace-nowrap">{doc.docNumber}</span>
+                            {doc.status === 'draft' && (
+                              <span className="ml-2 inline-block align-middle rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-amber-500">Draft</span>
+                            )}
+                          </p>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase mt-1">Ref No: {doc.id.slice(0,6)}</p>
+                        </td>
+                        <td className="w-[28%] px-4 md:px-8 py-5 md:py-7">
+                          <div className="min-w-0 pr-2">
+                            <p className="text-xs md:text-sm font-bold text-gray-200 uppercase tracking-tight truncate" title={recipientName !== '—' ? recipientName : undefined}>
+                              {recipientName}
+                            </p>
+                            {carOrItemName ? (
+                              <p className="text-[10px] md:text-[11px] font-bold text-gray-400 uppercase mt-1 tracking-tight truncate" title={doc.vehicleTitle || carOrItemName}>
+                                {carOrItemName}
+                              </p>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td className="w-[15%] px-4 md:px-8 py-5 md:py-7">
+                          {doc.chassisNumber ? (
+                            <p className="text-xs md:text-sm font-bold text-gray-200 uppercase tracking-tight font-mono truncate" title={doc.chassisNumber}>
+                              {doc.chassisNumber}
+                            </p>
+                          ) : (
+                            <p className="text-[10px] font-bold text-gray-700 uppercase tracking-widest">—</p>
                           )}
-                        </p>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase mt-1">Ref No: {doc.id.slice(0,6)}</p>
-                      </td>
-                      <td className="px-6 md:px-12 py-5 md:py-7">
-                        <p className="text-xs md:text-sm font-bold text-gray-200 uppercase tracking-tight">{doc.clientName}</p>
-                      </td>
-                      <td className="px-6 md:px-12 py-5 md:py-7">
-                        {doc.chassisNumber
-                          ? <p className="text-xs md:text-sm font-bold text-gray-200 uppercase tracking-tight font-mono">{doc.chassisNumber}</p>
-                          : <p className="text-[10px] font-bold text-gray-700 uppercase tracking-widest">—</p>}
-                      </td>
-                      <td className="px-6 md:px-12 py-5 md:py-7">
-                        <p className="text-sm md:text-base font-black text-white">৳{doc.vehiclePrice.toLocaleString()}</p>
-                      </td>
-                      <td className="px-6 md:px-12 py-5 md:py-7 text-right flex justify-end gap-2 md:gap-3">
-                        <button onClick={() => setPreviewingDoc(doc)} className="p-3 md:p-4 text-red-600 bg-red-700/10 rounded-xl md:rounded-2xl hover:bg-red-700 hover:text-white transition-all shadow-sm"><Eye className="w-4 h-4 md:w-5 md:h-5" /></button>
-                        <button onClick={() => setEditingDoc(doc)} className="p-3 md:p-4 text-blue-500 bg-blue-500/10 rounded-xl md:rounded-2xl hover:bg-blue-500 hover:text-white transition-all shadow-sm"><Edit className="w-4 h-4 md:w-5 md:h-5" /></button>
-                        <button onClick={() => handleDelete(doc.id)} className="p-3 md:p-4 text-gray-500 bg-white/5 rounded-xl md:rounded-2xl hover:bg-red-600 hover:text-white transition-all shadow-sm"><Trash2 className="w-4 h-4 md:w-5 md:h-5" /></button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="w-[12%] px-4 md:px-8 py-5 md:py-7">
+                          <p className="text-sm md:text-base font-black text-white truncate">৳{doc.vehiclePrice.toLocaleString()}</p>
+                        </td>
+                        <td className="w-[13%] px-4 md:px-8 py-5 md:py-7 text-right">
+                          <div className="flex justify-end gap-2 md:gap-3">
+                            <button onClick={() => setPreviewingDoc(doc)} className="p-2.5 md:p-3 text-red-600 bg-red-700/10 rounded-xl md:rounded-2xl hover:bg-red-700 hover:text-white transition-all shadow-sm" title="Preview"><Eye className="w-4 h-4 md:w-5 md:h-5" /></button>
+                            <button onClick={() => setEditingDoc(doc)} className="p-2.5 md:p-3 text-blue-500 bg-blue-500/10 rounded-xl md:rounded-2xl hover:bg-blue-500 hover:text-white transition-all shadow-sm" title="Edit"><Edit className="w-4 h-4 md:w-5 md:h-5" /></button>
+                            <button onClick={() => handleDelete(doc.id)} className="p-2.5 md:p-3 text-gray-500 bg-white/5 rounded-xl md:rounded-2xl hover:bg-red-600 hover:text-white transition-all shadow-sm" title="Delete"><Trash2 className="w-4 h-4 md:w-5 md:h-5" /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {filteredDocs.length === 0 && !isLoading && (
                     <tr>
                       <td colSpan={6} className="px-8 py-32 text-center text-gray-700 font-black text-lg uppercase tracking-[0.5em] opacity-30 italic">No records found in database</td>
@@ -1412,7 +1475,7 @@ const App: React.FC = () => {
                <button onClick={() => setPreviewingDoc(null)} className="p-3 md:p-4 hover:bg-white/10 rounded-full md:rounded-[2rem] transition-all group shrink-0"><X className="w-6 h-6 md:w-8 md:h-8 text-gray-500 group-hover:text-white" /></button>
                <div className="truncate flex-1">
                  <h2 className="text-lg md:text-2xl font-black text-white uppercase tracking-tighter mb-1 leading-none truncate">{previewingDoc.docNumber}</h2>
-                 <p className="text-[9px] md:text-[11px] font-black text-red-700 uppercase tracking-[0.2em] truncate">{previewingDoc.clientName}</p>
+                 <p className="text-[9px] md:text-[11px] font-black text-red-700 uppercase tracking-[0.2em] truncate">{getDocRecipient(previewingDoc)}</p>
                </div>
             </div>
 

@@ -178,17 +178,19 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ initialData, onSave, onCanc
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.clientName && formData.type !== DocumentType.BILL && formData.type !== DocumentType.QUOTATION) {
+    if (!formData.clientName && !formData.acName && formData.type !== DocumentType.BILL && formData.type !== DocumentType.QUOTATION) {
       alert("Please enter the buyer's name.");
       return;
     }
     
-    onSave({ ...formData, status: 'final' } as BusinessDocument);
+    const clientNameVal = formData.clientName || (formData.type === DocumentType.BILL || formData.type === DocumentType.QUOTATION ? (formData.acName || '') : '');
+    onSave({ ...formData, clientName: clientNameVal, status: 'final' } as BusinessDocument);
   };
 
   // A draft may be unfinished, so it skips the buyer-name check; it is finished later with the main button.
   const handleSaveDraft = () => {
-    onSave({ ...formData, status: 'draft' } as BusinessDocument);
+    const clientNameVal = formData.clientName || (formData.type === DocumentType.BILL || formData.type === DocumentType.QUOTATION ? (formData.acName || '') : '');
+    onSave({ ...formData, clientName: clientNameVal, status: 'draft' } as BusinessDocument);
   };
 
   const inputClass = "w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-sm font-medium outline-none focus:border-red-700/50 focus:bg-white/[0.08] text-white placeholder:text-gray-500 transition-all focus:ring-4 focus:ring-red-700/10";
