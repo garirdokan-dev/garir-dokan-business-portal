@@ -15,6 +15,7 @@ import {
   applySheetLayout,
   carRowHeight,
 } from '../utils/excelHelpers';
+import { applySheetDesign, type LaidRow, type SheetDesign } from '../utils/sheetDesign';
 
 /* ---------------- column map (BD superset layout) ---------------- */
 const COL = {
@@ -101,7 +102,8 @@ function readSheet(ws: any, ncols: number, origin: 'BD' | 'JP', notes?: NoteMap 
   const isSep = (r: number) => {
     for (let c = 1; c <= 6; c++) {
       const v = fillHex(ws.getRow(r).getCell(c));
-      if (v && v.toUpperCase().includes('31859B')) return true;
+      // teal in the classic design, black in the Brand design
+      if (v && /31859B|111111/.test(v.toUpperCase())) return true;
     }
     return false;
   };
@@ -242,7 +244,8 @@ export async function combineStocks(
   bdFile: File | ArrayBuffer,
   japanFile: File | ArrayBuffer,
   asOfDateIn: Date | string,
-  onProgress?: (msg: string) => void
+  onProgress?: (msg: string) => void,
+  design: SheetDesign = 'classic',
 ): Promise<ReconciliationSummary> {
   const ExcelJS = await getExcelJS();
   const warnings: string[] = [];
@@ -464,6 +467,8 @@ export async function combineStocks(
 
   let tr = headerRowIdx + 1;
   let serial = 0;
+  // what each written row is, for the Excel design step at the end
+  const laid: LaidRow[] = [];
 
   const writeCarRow = (spec: Spec) => {
     const x = spec.row!;
@@ -487,6 +492,7 @@ export async function combineStocks(
     { const sc = cells.get(COL.SUPPLIER) || { colIndex: COL.SUPPLIER, colLetter: 'M', value: null, style: {} } as CellData; sc.value = 'RAITA'; sc.formula = undefined; cells.set(COL.SUPPLIER, sc); }
 
     const chain = chainResults(cells);
+    laid.push({ row: tr, kind: 'car', origin: x.origin });
     const rowObj = ws.getRow(tr);
     const descCell = cells.get(COL.DESC);
     rowObj.height = carRowHeight(
@@ -525,6 +531,7 @@ export async function combineStocks(
   };
 
   const writeSep = () => {
+    laid.push({ row: tr, kind: 'separator' });
     const row = ws.getRow(tr); row.height = sepHeight;
     for (let c = 1; c <= TOTAL; c++) {
       const cell = row.getCell(c); cell.value = null;
@@ -533,6 +540,7 @@ export async function combineStocks(
     tr += 1;
   };
   const writeSubSep = () => {
+    laid.push({ row: tr, kind: 'divider' });
     const row = ws.getRow(tr); row.height = 3.75;
     const line = { style: 'thin', color: { argb: 'FFBFBFBF' } };
     for (let c = 1; c <= TOTAL; c++) {
@@ -553,13 +561,16 @@ export async function combineStocks(
     writeSep();
   }
   // gap rows (2)
-  for (let i = 0; i < 2; i++) { const row = ws.getRow(tr); for (let c = 1; c <= TOTAL; c++) { const cell = row.getCell(c); cell.value = null; cell.style = { fill: { type: 'pattern', pattern: 'none' }, border: {}, font: { name: 'Oswald', size: 11 }, alignment: {}, numFmt: 'General' }; } tr += 1; }
+  for (let i = 0; i < 2; i++) { laid.push({ row: tr, kind: 'gap' }); const row = ws.getRow(tr); for (let c = 1; c <= TOTAL; c++) { const cell = row.getCell(c); cell.value = null; cell.style = { fill: { type: 'pattern', pattern: 'none' }, border: {}, font: { name: 'Oswald', size: 11 }, alignment: {}, numFmt: 'General' }; } tr += 1; }
   // label row
   const labelRow = ws.getRow(tr); labelRow.height = labelHeight;
   const lc = labelRow.getCell(1);
   lc.value = "BD & JAPAN COMBINED STOCK OUT LISTING CAR'S";
   lc.style = { font: labelFont, fill: labelFill, alignment: labelAlign, border: {}, numFmt: 'General' };
   for (let c = 2; c <= 9; c++) labelRow.getCell(c).style = { fill: JSON.parse(JSON.stringify(labelFill)), font: { name: 'Oswald', size: 11 }, border: {}, alignment: {}, numFmt: 'General' };
+  // merged across A..I like the BD and Japan sheets; unmerged, the centred title was cut off on the left
+  try { ws.mergeCells(`A${tr}:I${tr}`); } catch { /* ignore */ }
+  laid.push({ row: tr, kind: 'stockOutTitle' });
   tr += 1;
   // OUT section
   for (const g of outGroups) {
@@ -575,6 +586,14 @@ export async function combineStocks(
   onProgress?.('Generating downloadable .xlsx…');
   /* ---- final layout: column widths, header row heights, centre alignment ---- */
   applySheetLayout(ws, COL as unknown as Record<string, number | undefined>, TOTAL, tr);
+  /* ---- the chosen Excel design (Classic leaves a classic sheet exactly as written) ---- */
+  applySheetDesign(design, {
+    ws, headerRow: headerRowIdx, totalCols: TOTAL, rows: laid,
+    cols: {
+      name: COL.NAME, description: COL.DESC, longDescription: COL.LONGDESC, price: COL.PRICE,
+      chassis: COL.CHASSIS, location: COL.LOC, status: COL.STATUS, supplier: COL.SUPPLIER,
+    },
+  });
 
   const buf = await outWb.xlsx.writeBuffer();
   const outputBlob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });

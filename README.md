@@ -198,3 +198,31 @@ The Garir Dokan Operations Desk is built into this site as the **Pricing Desk** 
   `npm uninstall` also pruned leftover `@supabase/*` entries from `package-lock.json`; Supabase was
   already gone from `package.json` and those entries were never installed.
 
+
+## Excel design of the stock workbooks
+
+BD Stock, Japan Stock and BD + Japan Combine each have a **⚙ Excel design** button in the
+Workbooks header. It opens a panel with two choices, each shown as a small drawing:
+
+- **Classic** — the look the sheets have today (teal header, red title bar). This is the default.
+- **Brand Black & Red** — black title band with "GARIR DOKAN **OFFER LIST**", deep red header,
+  light zebra rows and grid, bold car names, green IN STOCK / red STOCK OUT, prices with thousands
+  separators and a dash for an uncosted car, black group separators, and a full-width red
+  stock-out title. Header words are written in capitals (MILEAGE, SUPPLIER).
+
+Only the look of the output file changes. Values, formulas, notes, row order, serials and column
+widths stay exactly as the tool writes them, and so do the colours that carry a meaning: the
+chassis fill (green confirmed, blue pending), red stock-out names, red transferred rows, prices
+flagged red for manual entry, and link text.
+
+- Each tool keeps its own choice. It is saved in the browser and in the `preferences` table as
+  `stock_design` (newest change wins, read when a tool opens and when the window regains focus),
+  so every computer uses the same design; a failed save goes through the normal retry queue.
+- A workbook made in either design can be uploaded next month: separators are recognised in both
+  colours and the header in both spellings. Choosing Classic for a Brand workbook puts the classic
+  look back (title, header, rows and stock-out title); a classic workbook is left exactly as written.
+- The design is applied as the last step (`pricing/stock/utils/sheetDesign.ts`), after the usual
+  layout. The setting lives in `pricing/stock/utils/designSetting.ts` and the button and panel in
+  `pricing/stock/components/DesignPicker.tsx`.
+- Fixed at the same time: the combined sheet's stock-out title is now merged across A–I like the
+  BD and Japan sheets. Unmerged, the centred title was cut off on the left ("ED STOCK OUT …").

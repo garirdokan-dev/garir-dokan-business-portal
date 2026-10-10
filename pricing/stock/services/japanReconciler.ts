@@ -1,4 +1,5 @@
 import type { FieldChange, NewCarRecord, ReconciliationSummary, SheetRow } from '../types';
+import type { SheetDesign } from '../utils/sheetDesign';
 import {
   COLORS,
   extractCellValue,
@@ -22,7 +23,7 @@ function resolveColumns(m: Record<string, number>): ColMap {
     YEAR: m['YEAR'] || 4,
     COLOR: m['COLOR'] || 5,
     POINT: m['POINT'] || 6,
-    MILAGE: m['MILAGE'] || 7,
+    MILAGE: m['MILAGE'] || m['MILEAGE'] || 7,   // MILEAGE is how the Brand design spells it
     DESCRIPTION: m['DESCRIPTION'] || 8,
     PRICE: m['PRICE'] || 9,
     CHASSIS: m['CHASSIS'] || 10,
@@ -279,7 +280,8 @@ export async function reconcileJapanStock(
   customizedFile: File | ArrayBuffer,
   sourceFile: File | ArrayBuffer,
   asOfDate: Date | string,
-  onProgress?: (msg: string) => void
+  onProgress?: (msg: string) => void,
+  design: SheetDesign = 'classic',
 ): Promise<ReconciliationSummary> {
   const cfg: WorkflowConfig = {
     mode: 'JAPAN',
@@ -322,5 +324,5 @@ export async function reconcileJapanStock(
     sourceFingerprint,
     rowFingerprint,
   };
-  return reconcileCore(customizedFile, sourceFile, asOfDate, cfg, onProgress);
+  return reconcileCore(customizedFile, sourceFile, asOfDate, cfg, onProgress, design);
 }

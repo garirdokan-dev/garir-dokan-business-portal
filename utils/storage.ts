@@ -435,6 +435,7 @@ const replayPending = async (item: PendingItem): Promise<void> => {
     global_headers_v2: 'gd_global_headers_v2',
     hero_banner: 'gd_hero_banner',
     price_desk: 'gd.price.v1',          // the Pricing Desk's duty sheets, rate and charges
+    stock_design: 'gd_stock_design',    // the Excel design each stock tool writes
   };
   const key = localKeyByRecord[item.recordId];
   if (!key) return;

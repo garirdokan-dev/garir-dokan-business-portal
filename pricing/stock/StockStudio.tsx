@@ -6,6 +6,7 @@ import { WarningsBanner } from './components/WarningsBanner';
 import { ResultsDashboard } from './components/ResultsDashboard';
 import { combineStocks } from './services/combineService';
 import { CarAnimation } from './components/CarAnimation';
+import { DesignPicker, useSheetDesign } from './components/DesignPicker';
 import { reconcileBDStock } from './services/bdReconciler';
 import { reconcileJapanStock } from './services/japanReconciler';
 import { generateSampleBDFiles, generateSampleJapanFiles } from './utils/sampleData';
@@ -65,6 +66,8 @@ export default function StockStudio({ mode: requestedMode }: { mode: StockMode }
   const [progressMsg, setProgressMsg] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [summary, setSummary] = useState<ReconciliationSummary | null>(null);
+  // the Excel design this tool writes (chosen with the gear; each tool has its own)
+  const design = useSheetDesign(mode as StockMode);
 
   const handleSelectMode = (newMode: AppMode) => {
     if (newMode === mode) return;
@@ -114,11 +117,11 @@ export default function StockStudio({ mode: requestedMode }: { mode: StockMode }
       const targetDate = asOfDate || formatDateForInput(new Date());
       let result: ReconciliationSummary;
       if (mode === 'BD') {
-        result = await reconcileBDStock(bdCustomizedFile!, bdSourceFile!, targetDate, (msg) => setProgressMsg(msg));
+        result = await reconcileBDStock(bdCustomizedFile!, bdSourceFile!, targetDate, (msg) => setProgressMsg(msg), design);
       } else if (mode === 'JAPAN') {
-        result = await reconcileJapanStock(japanCustomizedFile!, japanSourceFile!, targetDate, (msg) => setProgressMsg(msg));
+        result = await reconcileJapanStock(japanCustomizedFile!, japanSourceFile!, targetDate, (msg) => setProgressMsg(msg), design);
       } else {
-        result = await combineStocks(combineBdFile!, combineJpFile!, targetDate, (msg) => setProgressMsg(msg));
+        result = await combineStocks(combineBdFile!, combineJpFile!, targetDate, (msg) => setProgressMsg(msg), design);
       }
       setSummary(result);
       setTimeout(() => document.getElementById('results-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
@@ -197,10 +200,12 @@ export default function StockStudio({ mode: requestedMode }: { mode: StockMode }
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <div className="gd-sheet-head">
+          <div className="gd-sheet-head gd-head-has-design">
             <span className="gd-tag">Intake</span>
             <h2>Workbooks</h2>
             <span className="gd-head-bn">{p.intakeBn}</span>
+            <DesignPicker tool={mode as StockMode} design={design} disabled={isProcessing}
+              hasResult={!!summary} runLabel={p.runLabel} />
           </div>
           <div className="gd-sheet-body">
             <div className="gd-intake">

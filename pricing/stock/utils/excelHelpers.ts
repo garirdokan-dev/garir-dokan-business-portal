@@ -534,6 +534,8 @@ const WIDTH_BY_ROLE: Record<string, number> = {
 };
 /** Everything from COSTING PRICE to the last column that is not named above. */
 const TAIL_WIDTH = 20;
+/** Width of the DESCRIPTION column, for designs that measure row heights themselves. */
+export const DESCRIPTION_WIDTH = WIDTH_BY_ROLE.DESCRIPTION;
 
 export const HEADER_ROW_HEIGHTS = [25.5, 34, 31, 30];
 /** A wrapped description line is worth this much height, plus a little breathing room. */

@@ -545,3 +545,67 @@ html.light-mode .gd-app .seal small{color:var(--stamp)}
 .gd-app .gd-dd-search input::placeholder{color:var(--ink-faint)}
 .gd-app .gd-field-col input::placeholder,
 .gd-app .field input::placeholder{color:var(--ink-faint)}
+
+/* ==========================================================================
+   Excel design setting (BD Stock, Japan Stock, BD + Japan Combine)
+   ========================================================================== */
+.gd-design-btn{display:inline-flex;align-items:center;gap:7px;margin-left:12px;padding:6px 11px;cursor:pointer;
+  font:inherit;font-size:12px;white-space:nowrap;background:var(--paper-2);border:1px solid var(--line);
+  border-radius:.8rem;color:var(--ink)}
+.gd-design-btn:hover:not(:disabled){border-color:var(--stamp)}
+.gd-design-btn:disabled{opacity:.45;cursor:not-allowed}
+.gd-design-btn svg{width:15px;height:15px;flex:none;color:var(--stamp-soft)}
+html.light-mode .gd-design-btn svg{color:var(--stamp)}
+.gd-design-btn small{font-size:11.5px;font-weight:700;color:var(--ink-faint)}
+.gd-design-btn b{font-weight:800;color:var(--ink)}
+.gd-design-btn .gd-design-short{display:none}
+@media(max-width:600px){
+  .gd-head-has-design{flex-wrap:wrap;row-gap:8px}   /* on a phone the gear may take a line of its own */
+  .gd-sheet-head .gd-design-btn{margin-left:auto}
+  .gd-design-btn .gd-design-full{display:none}
+  .gd-design-btn .gd-design-short{display:inline}
+}
+@media(max-width:420px){.gd-design-btn small{display:none}}
+
+.gd-overlay-card.gd-design-card{width:min(94vw,640px);max-height:92vh;overflow:auto}
+.gd-design-card .gd-sheet-head h2{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gd-design-close{margin-left:auto;flex:none;display:grid;place-items:center;width:30px;height:30px;padding:0;cursor:pointer;
+  background:var(--paper-2);border:1px solid var(--line);border-radius:.6rem;color:var(--ink-soft)}
+.gd-design-close:hover{border-color:var(--stamp);color:var(--ink)}
+.gd-design-close svg{width:16px;height:16px}
+.gd-design-body{padding:18px 22px 20px;text-align:left}
+.gd-design-lede{margin:0;font-size:13px;line-height:1.5;color:var(--ink-soft)}
+.gd-design-bn{margin:4px 0 0;font-size:12.5px;color:var(--ink-faint)}
+.gd-design-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+@media(max-width:560px){.gd-design-grid{grid-template-columns:1fr}}
+.gd-design-opt{position:relative;display:block;width:100%;padding:10px 10px 12px;text-align:left;cursor:pointer;font:inherit;
+  color:var(--ink);background:var(--paper-2);border:1.5px solid var(--line);border-radius:1rem}
+.gd-design-opt:hover{border-color:var(--stamp)}
+.gd-design-opt.is-on{border-color:var(--green);box-shadow:0 0 0 1px var(--green) inset;background:var(--green-bg)}
+.gd-design-opt h4{margin:10px 2px 2px;font-size:14px;font-weight:800;color:var(--ink)}
+.gd-design-opt p{margin:0 2px;font-size:12px;line-height:1.45;color:var(--ink-soft)}
+.gd-design-tick{position:absolute;top:6px;right:6px;display:grid;place-items:center;width:22px;height:22px;
+  border-radius:999px;background:var(--green);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.gd-design-tick svg{width:14px;height:14px}
+.gd-design-foot{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:16px}
+.gd-design-foot span{flex:1 1 220px;font-size:12px;line-height:1.45;color:var(--ink-faint)}
+.gd-design-foot .gd-btn-primary{margin-left:auto;min-width:120px;padding:10px 26px}
+
+/* the small drawing of each design: it shows the Excel file, so its colours are fixed */
+.gd-xl{overflow:hidden;background:#fff;border:1px solid rgba(0,0,0,.18);border-radius:.45rem;
+  font-family:'Oswald','Arial Narrow',sans-serif;line-height:1}
+.gd-xl-title{display:grid}
+.gd-xl-title>span{display:flex;align-items:center;justify-content:center;gap:0;border:.5px solid;border-width:0 .5px .5px 0;
+  font-size:9px;letter-spacing:.02em;white-space:nowrap;overflow:hidden}
+.gd-xl-title>span>b{display:block;border-radius:1px}
+.gd-xl-t0>span,.gd-xl-t2>span{height:8px}
+.gd-xl-t1>span{height:15px;font-weight:700}
+.gd-xl-row{display:grid}
+.gd-xl-row i{display:flex;align-items:center;justify-content:center;padding:0 3px;border:.5px solid;border-width:0 .5px .5px 0}
+.gd-xl-row i b{display:block;border-radius:1px}
+.gd-xl-head i{height:10px}
+.gd-xl-car i{height:13px}
+.gd-xl-gap{height:6px;background:#fff}
+.gd-xl-out{display:grid}
+.gd-xl-out span{display:flex;align-items:center;justify-content:center;height:10px;font-size:7px;letter-spacing:.06em;color:#fff}
+.gd-xl-out span:empty{background:#fff}

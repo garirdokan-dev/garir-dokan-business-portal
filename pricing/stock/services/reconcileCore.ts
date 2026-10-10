@@ -11,6 +11,7 @@ import type {
 } from '../types';
 import { readNotesFromXlsx, noteFor, type NoteMap } from '../utils/noteReader';
 import { applySheetLayout, carRowHeight } from '../utils/excelHelpers';
+import { applySheetDesign, type LaidRow, type SheetDesign } from '../utils/sheetDesign';
 import {
   COLORS,
   applyCellStyle,
@@ -116,7 +117,8 @@ export async function reconcileCore(
   sourceFile: File | ArrayBuffer,
   asOfDate: Date | string,
   cfg: WorkflowConfig,
-  onProgress?: (msg: string) => void
+  onProgress?: (msg: string) => void,
+  design: SheetDesign = 'classic',
 ): Promise<ReconciliationSummary> {
   const ExcelJS = await getExcelJS();
   const asOfDateStr = formatDateForTag(asOfDate);
@@ -286,7 +288,8 @@ export async function reconcileCore(
       const v = cell.value;
       if (v !== null && v !== undefined && String(v).trim() !== '') hasContent = true;
       const fillHex = fillHexOf(cell);
-      if (fillHex && fillHex.toUpperCase().includes('31859B')) hasTeal = true;
+      // teal in the classic design, black in the Brand design
+      if (fillHex && /31859B|111111/.test(fillHex.toUpperCase())) hasTeal = true;
     }
     return hasTeal && !hasContent;
   };
@@ -741,8 +744,12 @@ export async function reconcileCore(
   };
 
   let currentRow = customHeaderRowIdx + 1;
+  // what each written row is, for the Excel design step at the end
+  const laid: LaidRow[] = [];
+  const origin = cfg.mode === 'JAPAN' ? 'JP' : 'BD';
 
   const writeRow = (rowObj: SheetRow) => {
+    laid.push({ row: currentRow, kind: 'car', origin });
     const excelRow = wsCustom.getRow(currentRow);
     // a car row is as tall as its own DESCRIPTION needs, not the height it had in the master
     const descCell = rowObj.cells.get(COL.DESCRIPTION);
@@ -779,6 +786,7 @@ export async function reconcileCore(
   };
 
   const writeSeparator = () => {
+    laid.push({ row: currentRow, kind: 'separator' });
     const row = wsCustom.getRow(currentRow);
     row.height = captured.sepHeight;
     // The separator bar must run the FULL width (A..X) with no column grid-lines showing,
@@ -809,6 +817,7 @@ export async function reconcileCore(
   // gap rows
   const gaps = captured.gapCount > 0 ? captured.gapCount : 2;
   for (let i = 0; i < gaps; i++) {
+    laid.push({ row: currentRow, kind: 'gap' });
     const row = wsCustom.getRow(currentRow);
     row.height = captured.gapHeight;
     for (let c = 1; c <= TOTAL_COLS; c++) {
@@ -821,6 +830,7 @@ export async function reconcileCore(
 
   // label row (merged A..span; fill only across the merge)
   const labelSpan = Math.min(captured.labelSpan || 9, TOTAL_COLS);
+  laid.push({ row: currentRow, kind: 'stockOutTitle' });
   const labelRow = wsCustom.getRow(currentRow);
   labelRow.height = captured.labelHeight;
   const labelFill = captured.labelFill || { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.RED_LABEL } };
@@ -859,6 +869,14 @@ export async function reconcileCore(
   onProgress?.('Generating downloadable .xlsx file…');
   /* ---- final layout: column widths, header row heights, centre alignment ---- */
   applySheetLayout(wsCustom, COL as unknown as Record<string, number | undefined>, TOTAL_COLS, currentRow);
+  /* ---- the chosen Excel design (Classic leaves a classic sheet exactly as written) ---- */
+  applySheetDesign(design, {
+    ws: wsCustom, headerRow: customHeaderRowIdx, totalCols: TOTAL_COLS, rows: laid,
+    cols: {
+      name: COL.CAR_NAME, description: COL.DESCRIPTION, longDescription: COL.LONG_DESCRIPTION,
+      price: COL.PRICE, chassis: COL.CHASSIS, location: COL.LOCATION, status: COL.STATUS, supplier: COL.SUPPLIER,
+    },
+  });
 
   const outputBuffer = await wbCustom.xlsx.writeBuffer();
   const outputBlob = new Blob([outputBuffer], {
