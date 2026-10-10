@@ -88,10 +88,7 @@ const CLASSIC = {
 
 /** Indent 1 takes roughly this much of a column's width (Excel: one step = 3 spaces). */
 const INDENT_WIDTH = 1.3;
-/** The title band and the stock-out title span the offer columns, A … LONG DESCRIPTION. */
-const OFFER_SPAN = 14;
-/** The classic title rows and stock-out title span A … I. */
-const CLASSIC_SPAN = 9;
+/* In both designs the title rows and the stock-out title are merged from A to the PRICE column. */
 
 /* header words the Brand design spells out in capitals (and Classic puts back) */
 const BRAND_HEADER: Record<string, string> = { MILAGE: 'MILEAGE', SUPPLIRE: 'SUPPLIER' };
@@ -181,8 +178,24 @@ function mergeSpan(ws: any, r: number, lastCol: number) {
  * Entry point                                                         *
  * ------------------------------------------------------------------ */
 export function applySheetDesign(design: SheetDesign, t: DesignTarget): void {
+  colourMissingChassis(t);
   if (design === 'brand') paintBrand(t);
   else restoreClassic(t);
+}
+
+/**
+ * A chassis cell that lost its colour (a sheet whose columns were moved by hand, for example) is
+ * marked blue — pending — the same as a newly added car. A coloured chassis is never changed.
+ */
+function colourMissingChassis(t: DesignTarget) {
+  const { ws, rows, cols } = t;
+  for (const laid of rows) {
+    if (laid.kind !== 'car') continue;
+    const cell = ws.getRow(laid.row).getCell(cols.chassis);
+    if (!isBackground(fillArgb(cell.style?.fill), cols.chassis, cols)) continue;
+    const style = cell.style ? clone(cell.style) : {};
+    cell.style = { ...style, fill: solid(CLASSIC.band) };
+  }
 }
 
 /* ================================================================== *
@@ -194,7 +207,7 @@ const titleRole = (r: number, text: string): TitleRole =>
 
 function paintBrand(t: DesignTarget) {
   const { ws, headerRow, totalCols, rows, cols } = t;
-  const span = Math.min(OFFER_SPAN, totalCols);
+  const span = Math.min(cols.price, totalCols);
 
   /* ---- title band ---- */
   for (let r = 1; r < headerRow; r++) {
@@ -268,8 +281,9 @@ function paintBrand(t: DesignTarget) {
       for (let c = 1; c <= totalCols; c++) setStyle(row.getCell(c), { fill: solid(BRAND.band) });
       row.height = 5;
     } else if (laid.kind === 'divider') {
+      // white, so the sheet's column grid lines do not show through this thin row
       for (let c = 1; c <= totalCols; c++) {
-        setStyle(row.getCell(c), { border: { bottom: { style: 'thin', color: { argb: BRAND.grid } } } });
+        setStyle(row.getCell(c), { fill: solid(WHITE), border: { bottom: { style: 'thin', color: { argb: BRAND.grid } } } });
       }
       row.height = 4;
     } else if (laid.kind === 'stockOutTitle') {
@@ -349,7 +363,7 @@ function paintBrandCar(row: any, banded: boolean, totalCols: number, cols: Desig
  * ================================================================== */
 function restoreClassic(t: DesignTarget) {
   const { ws, headerRow, totalCols, rows, cols } = t;
-  const span = Math.min(CLASSIC_SPAN, totalCols);
+  const span = Math.min(cols.price, totalCols);
   const titleRows: number[] = [];
 
   /* ---- title rows ---- */
@@ -384,13 +398,12 @@ function restoreClassic(t: DesignTarget) {
           numFmt,
         });
       } else {
-        const big = c <= OFFER_SPAN;
-        const noFill = role === 'contact' && c >= 20;   // the classic contact row stops at column S
+        // the empty cells after the merged title continue its colour, each with a thin border
         setStyle(cell, {
-          font: { name: 'Oswald', size: big ? (role === 'name' ? 22 : role === 'top' ? 19 : 18) : 11, color: big ? ink : { theme: 1 } },
-          fill: noFill ? NO_FILL : solidBoth(fill),
+          font: { name: 'Oswald', size: 11, color: { theme: 1 } },
+          fill: solidBoth(fill),
           border: box(BLACK),
-          alignment: big ? { horizontal: 'center', vertical: 'middle', wrapText: true } : { horizontal: 'center', vertical: 'middle' },
+          alignment: { horizontal: 'center', vertical: 'middle' },
           numFmt,
         });
       }

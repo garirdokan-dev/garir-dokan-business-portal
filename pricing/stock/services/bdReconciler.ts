@@ -2,12 +2,14 @@ import type { FieldChange, NewCarRecord, ReconciliationSummary, SheetRow } from 
 import type { SheetDesign } from '../utils/sheetDesign';
 import {
   COLORS,
+  colNumberToLetter,
   extractCellValue,
   normalizeKey,
   numericEqual,
   parseDescription,
   toNumber,
 } from '../utils/excelHelpers';
+import { BD_ORDER, inputPositions } from '../utils/columnLayout';
 import {
   reconcileCore,
   cellFromTemplate,
@@ -18,32 +20,7 @@ import {
 } from './reconcileCore';
 
 function resolveColumns(m: Record<string, number>): ColMap {
-  return {
-    SL_NO: m['SL NO'] || 1,
-    CAR_NAME: m['CAR NAME'] || 2,
-    GRADE: m['GRADE'] || 3,
-    YEAR: m['YEAR'] || 4,
-    COLOR: m['COLOR'] || 5,
-    POINT: m['POINT'] || 6,
-    MILAGE: m['MILAGE'] || m['MILEAGE'] || 7,   // MILEAGE is how the Brand design spells it
-    DESCRIPTION: m['DESCRIPTION'] || 8,
-    PRICE: m['PRICE'] || 9,
-    CHASSIS: m['CHASSIS'] || 10,
-    LOCATION: m['LOCATION'] || 11,
-    STATUS: m['STATUS'] || 12,
-    SUPPLIER: m['SUPPLIRE'] || m['SUPPLIER'] || 13,
-    LONG_DESCRIPTION: m['LONG DESCRIPTION'] || 14,
-    COSTING_PRICE: m['COSTING PRICE'] || 15,
-    PRICE_DOLLAR: m['PRICE (DOLLAR)'] || 16,
-    PRICE_BDT: m['PRICE (BDT)'] || 17,
-    DUTY: m['DUTY'] || 18,
-    DRIVER_CNF: m['DRIVER + CNF'] || 19,
-    ADDITIONAL_COST: m['ADDITIONAL COST'] || 20,
-    PICTURE_DRIVE: m['PICTURE(DRIVE LINK)'] || 21,
-    UPLOADED_LINK: m['UPLOADED LINK'] || 22,
-    IMAGE: m['IMAGE'] || 23,
-    SOURCE_SHEET: m['SOURCE SHEET'] || 24,
-  };
+  return inputPositions(m, 'BD') as unknown as ColMap;   // either column order, by header text
 }
 
 function detectSourceHeader(ws: any): { headerRowIdx: number; sourceColMap: Record<string, number> } {
@@ -163,7 +140,7 @@ function refreshMatched(row: SheetRow, src: SourceRecord, ctx: CoreContext): Fie
     const cell = row.cells.get(COL.LOCATION);
     const oldLoc = cell?.value;
     if (String(oldLoc ?? '').trim() !== String(src.location).trim()) {
-      changes.push({ field: 'LOCATION', colName: 'K', oldValue: oldLoc, newValue: src.location });
+      changes.push({ field: 'LOCATION', colName: colNumberToLetter(COL.LOCATION), oldValue: oldLoc, newValue: src.location });
       if (cell) cell.value = src.location;
     }
   }
@@ -173,7 +150,7 @@ function refreshMatched(row: SheetRow, src: SourceRecord, ctx: CoreContext): Fie
     const resolved = toNumber(cell?.value);
     const hadFormula = !!cell?.formula;
     if (!numericEqual(resolved, src.price)) {
-      changes.push({ field: 'COSTING PRICE', colName: 'O', oldValue: cell?.formula || cell?.value, newValue: src.price });
+      changes.push({ field: 'COSTING PRICE', colName: colNumberToLetter(COL.COSTING_PRICE), oldValue: cell?.formula || cell?.value, newValue: src.price });
       if (cell) {
         cell.value = src.price;
         cell.formula = undefined;
@@ -185,7 +162,7 @@ function refreshMatched(row: SheetRow, src: SourceRecord, ctx: CoreContext): Fie
           priceCell.value = null;
           priceCell.formula = undefined;
           priceCell.style.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.RED_HIGHLIGHT } };
-          changes.push({ field: 'PRICE (flagged for manual entry)', colName: 'I', oldValue: 'formula cleared', newValue: 'BLANK + red fill' });
+          changes.push({ field: 'PRICE (flagged for manual entry)', colName: colNumberToLetter(COL.PRICE), oldValue: 'formula cleared', newValue: 'BLANK + red fill' });
         }
       }
     }
@@ -194,7 +171,7 @@ function refreshMatched(row: SheetRow, src: SourceRecord, ctx: CoreContext): Fie
   if (src.imageHyperlink) {
     const cell = row.cells.get(COL.IMAGE!);
     if (cell && cell.hyperlink !== src.imageHyperlink) {
-      changes.push({ field: 'IMAGE', colName: 'W', oldValue: cell.hyperlink || cell.value, newValue: src.imageHyperlink });
+      changes.push({ field: 'IMAGE', colName: colNumberToLetter(COL.IMAGE!), oldValue: cell.hyperlink || cell.value, newValue: src.imageHyperlink });
       cell.value = src.imageText || 'PHOTO';
       cell.hyperlink = src.imageHyperlink;
       cell.hyperlinkText = src.imageText || 'PHOTO';
@@ -320,6 +297,7 @@ export async function reconcileBDStock(
       'Data',
     ],
     totalCols: 24,
+    order: BD_ORDER,
     keyCol: (COL) => COL.CHASSIS,
     labelDefaultText: "BD STOCK OUT LISTING CAR'S",
     outputFilenamePrefix: 'BD_Update_Customized_Sheet',

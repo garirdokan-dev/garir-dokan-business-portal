@@ -16,19 +16,28 @@ import {
   carRowHeight,
 } from '../utils/excelHelpers';
 import { applySheetDesign, type LaidRow, type SheetDesign } from '../utils/sheetDesign';
+import {
+  BD_ORDER, JAPAN_ORDER, columnMove, inputPositions, layoutHeaderAndTitle, moveFormula, outputPositions,
+  type ColumnPositions,
+} from '../utils/columnLayout';
 
-/* ---------------- column map (BD superset layout) ---------------- */
+/* ---------------- column map: the output's order (BD layout, the new column order) ---------------- */
+const OUT = outputPositions(BD_ORDER) as Required<ColumnPositions>;
 const COL = {
-  SL: 1, NAME: 2, GRADE: 3, YEAR: 4, COLOR: 5, POINT: 6, MILE: 7, DESC: 8,
-  PRICE: 9, CHASSIS: 10, LOC: 11, STATUS: 12, SUPPLIER: 13, LONGDESC: 14,
-  COSTING: 15, DOLLAR: 16, BDT: 17, DUTY: 18, CNF: 19, ADDL: 20,
-  PICTURE: 21, UPLOADED: 22, IMAGE: 23, SOURCE: 24,
+  SL: OUT.SL_NO, NAME: OUT.CAR_NAME, GRADE: OUT.GRADE, YEAR: OUT.YEAR, COLOR: OUT.COLOR, POINT: OUT.POINT,
+  MILE: OUT.MILAGE, DESC: OUT.DESCRIPTION, CHASSIS: OUT.CHASSIS,
+  DOLLAR: OUT.PRICE_DOLLAR, BDT: OUT.PRICE_BDT, DUTY: OUT.DUTY, CNF: OUT.DRIVER_CNF, ADDL: OUT.ADDITIONAL_COST,
+  COSTING: OUT.COSTING_PRICE, PRICE: OUT.PRICE, LONGDESC: OUT.LONG_DESCRIPTION,
+  LOC: OUT.LOCATION, STATUS: OUT.STATUS, SUPPLIER: OUT.SUPPLIER,
+  PICTURE: OUT.PICTURE_DRIVE, UPLOADED: OUT.UPLOADED_LINK, IMAGE: OUT.IMAGE, SOURCE: OUT.SOURCE_SHEET,
 };
-const TOTAL = 24;
-const DOLLAR_COLS = [16, 17, 18, 19, 20];
+const TOTAL = BD_ORDER.length;
+const DOLLAR_COLS = [COL.DOLLAR, COL.BDT, COL.DUTY, COL.CNF, COL.ADDL];
 const TEAL = COLORS.TEAL_SEPARATOR;          // FF31859B
 const REDROW = COLORS.RED_HIGHLIGHT;         // FFFF0000
-const CENTER_COLS = new Set([1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 22]);
+// text columns sit on the left, everything else in the centre
+const LEFT_COLS = new Set([COL.DESC, COL.LONGDESC, COL.PICTURE, COL.IMAGE, COL.SOURCE]);
+const CENTER_COLS = new Set(Object.values(COL).filter((c) => !LEFT_COLS.has(c)));
 
 /* ---------------- normalizers (match Python route.py) ---------------- */
 const nu = (v: any): string | null => {
@@ -79,7 +88,8 @@ function fillHex(cell: any): string | null {
   return null;
 }
 
-/* Read a customized-layout sheet (BD or Japan) into row models with per-cell styles. */
+/* Read a customized sheet (BD or Japan, either column order) into row models with per-cell styles.
+ * Cells are kept under the output's columns; the columns are found by their header text. */
 function readSheet(ws: any, ncols: number, origin: 'BD' | 'JP', notes?: NoteMap | null) {
   // header row (has CHASSIS or CAR NAME + SL NO)
   let headerRowIdx = 4;
@@ -93,6 +103,15 @@ function readSheet(ws: any, ncols: number, origin: 'BD' | 'JP', notes?: NoteMap 
     });
     if (hasName && hasKey) { headerRowIdx = r; break; }
   }
+  const headerMap: Record<string, number> = {};
+  ws.getRow(headerRowIdx).eachCell({ includeEmpty: false }, (cell: any, colNum: number) => {
+    const v = String(cell.value || '').trim().toUpperCase();
+    if (v && !headerMap[v]) headerMap[v] = colNum;
+  });
+  const order = origin === 'JP' ? JAPAN_ORDER : BD_ORDER;
+  const input = inputPositions(headerMap, origin === 'JP' ? 'JAPAN' : 'BD');
+  const move = columnMove(input, OUT, order);
+  const at = (row: any, c: number | undefined) => (c ? row.getCell(c).value : null);
   // label row (STOCK OUT ...)
   let labelRowIdx = -1;
   for (let r = headerRowIdx + 1; r <= ws.rowCount; r++) {
@@ -118,16 +137,18 @@ function readSheet(ws: any, ncols: number, origin: 'BD' | 'JP', notes?: NoteMap 
   for (let r = headerRowIdx + 1; r <= last; r++) {
     if (r === labelRowIdx || isSep(r)) continue;
     const row = ws.getRow(r);
-    const a = row.getCell(1).value, b = row.getCell(2).value;
+    const a = at(row, input.SL_NO), b = at(row, input.CAR_NAME);
     if ((a === null || a === '') && (b === null || b === '')) continue;
     const cells = new Map<number, CellData>();
     for (let c = 1; c <= ncols; c++) {
+      const to = move.get(c);
+      if (!to) continue;
       const cell = row.getCell(c);
       const ext = extractCellValue(cell);
-      cells.set(c, {
-        colIndex: c, colLetter: colNumberToLetter(c),
+      cells.set(to, {
+        colIndex: to, colLetter: colNumberToLetter(to),
         value: ext.value,
-        formula: ext.formula ? stripEquals(ext.formula) : undefined,
+        formula: ext.formula ? moveFormula(stripEquals(ext.formula), move) : undefined,
         hyperlink: ext.hyperlink, hyperlinkText: ext.hyperlinkText,
         style: cloneCellStyle(cell),
         note: (() => {
@@ -142,13 +163,13 @@ function readSheet(ws: any, ncols: number, origin: 'BD' | 'JP', notes?: NoteMap 
     }
     rows.push({
       origin, rowNum: r, sec: labelRowIdx > 0 && r > labelRowIdx ? 'OUT' : 'IN',
-      name: nu(b) || '', year: normalizeKey(row.getCell(4).value) || null,
-      color: squash(row.getCell(5).value), point: squash(row.getCell(6).value),
-      mile: milenum(row.getCell(7).value), chassis: nu(row.getCell(10).value),
+      name: nu(b) || '', year: normalizeKey(at(row, input.YEAR)) || null,
+      color: squash(at(row, input.COLOR)), point: squash(at(row, input.POINT)),
+      mile: milenum(at(row, input.MILAGE)), chassis: nu(at(row, input.CHASSIS)),
       serial: normalizeKey(a) || null, height: row.height, cells,
     });
   }
-  return { rows, headerRowIdx, labelRowIdx, last };
+  return { rows, headerRowIdx, labelRowIdx, last, input };
 }
 
 /* ---------------- canonical BD model key + Japan routing (port of route.py) ---------------- */
@@ -421,6 +442,8 @@ export async function combineStocks(
       mode: 'BD',
     }) || outWb.worksheets[0];
   const headerRowIdx = bdInfo.headerRowIdx;
+  // header in the new column order; title rows merged A … PRICE
+  layoutHeaderAndTitle(ws, headerRowIdx, bdInfo.input, OUT, BD_ORDER);
 
   // capture label styling from BD label row
   const bdLabelCell = bdInfo.labelRowIdx > 0 ? bdWs.getRow(bdInfo.labelRowIdx).getCell(1) : null;
@@ -442,7 +465,8 @@ export async function combineStocks(
     for (let c = 1; c <= TOTAL; c++) {
       const cell = row.getCell(c);
       cell.value = null;
-      try { if (cell.note) cell.note = undefined as any; } catch { /* */ }
+      // remove the note completely: assigning undefined leaves an empty note box behind
+      if (cell._comment) cell._comment = undefined;
       cell.style = { font: { name: 'Oswald', size: 11 }, fill: { type: 'pattern', pattern: 'none' }, border: {}, alignment: {}, numFmt: 'General' };
     }
     row.height = undefined as any;
@@ -474,13 +498,8 @@ export async function combineStocks(
     const x = spec.row!;
     // build the effective cell map for this combined row
     const cells = new Map<number, CellData>();
-    if (x.origin === 'BD') {
-      for (let c = 1; c <= TOTAL; c++) cells.set(c, x.cells.get(c) ? JSON.parse(JSON.stringify(x.cells.get(c))) : undefined as any);
-    } else {
-      for (let c = 1; c <= 22; c++) cells.set(c, x.cells.get(c) ? JSON.parse(JSON.stringify(x.cells.get(c))) : undefined as any);
-      cells.set(23, undefined as any);                     // IMAGE blank
-      cells.set(24, x.cells.get(23) ? JSON.parse(JSON.stringify(x.cells.get(23))) : undefined as any); // SOURCE
-    }
+    // rows are already in the output's columns (a Japan row has no IMAGE, so that cell stays blank)
+    for (let c = 1; c <= TOTAL; c++) cells.set(c, x.cells.get(c) ? JSON.parse(JSON.stringify(x.cells.get(c))) : undefined as any);
     // merge Japan dollars (+ costing when BD empty)
     if (spec.mergeJp) {
       for (const c of DOLLAR_COLS) cells.set(c, spec.mergeJp.cells.get(c) ? JSON.parse(JSON.stringify(spec.mergeJp.cells.get(c))) : undefined as any);
@@ -567,9 +586,9 @@ export async function combineStocks(
   const lc = labelRow.getCell(1);
   lc.value = "BD & JAPAN COMBINED STOCK OUT LISTING CAR'S";
   lc.style = { font: labelFont, fill: labelFill, alignment: labelAlign, border: {}, numFmt: 'General' };
-  for (let c = 2; c <= 9; c++) labelRow.getCell(c).style = { fill: JSON.parse(JSON.stringify(labelFill)), font: { name: 'Oswald', size: 11 }, border: {}, alignment: {}, numFmt: 'General' };
-  // merged across A..I like the BD and Japan sheets; unmerged, the centred title was cut off on the left
-  try { ws.mergeCells(`A${tr}:I${tr}`); } catch { /* ignore */ }
+  for (let c = 2; c <= COL.PRICE; c++) labelRow.getCell(c).style = { fill: JSON.parse(JSON.stringify(labelFill)), font: { name: 'Oswald', size: 11 }, border: {}, alignment: {}, numFmt: 'General' };
+  // merged A … PRICE like the BD and Japan sheets; unmerged, the centred title was cut off on the left
+  try { ws.mergeCells(`A${tr}:${colNumberToLetter(COL.PRICE)}${tr}`); } catch { /* ignore */ }
   laid.push({ row: tr, kind: 'stockOutTitle' });
   tr += 1;
   // OUT section
@@ -613,7 +632,7 @@ export async function combineStocks(
       year: rawc(x, COL.YEAR), price: rawc(x, COL.COSTING),
       grade: rawc(x, COL.GRADE), color: rawc(x, COL.COLOR),
       point: rawc(x, COL.POINT), milage: rawc(x, COL.MILE),
-      location: 'JP', status: 'IN STOCK', sourceSheetTag: String(rawc(x, 23) || ''),
+      location: 'JP', status: 'IN STOCK', sourceSheetTag: String(rawc(x, COL.SOURCE) || ''),
     });
   }
   const updatedCars: any[] = [];  // merged BD+Japan (same-section)
@@ -622,7 +641,7 @@ export async function combineStocks(
     updatedCars.push({
       key: b.chassis || ('SL ' + (b.serial || '?')),
       carName: rawc(b, COL.NAME) || b.name,
-      changes: [{ field: 'Merged Japan pricing (Dollar / BDT / Duty / CNF / Additional' + (bdCostEmpty(b) ? ' + Costing' : '') + ')', colName: 'P–T', oldValue: 'BD row', newValue: 'Japan SL ' + (jp.serial || '?') }],
+      changes: [{ field: 'Merged Japan pricing (Dollar / BDT / Duty / CNF / Additional' + (bdCostEmpty(b) ? ' + Costing' : '') + ')', colName: `${colNumberToLetter(COL.DOLLAR)}–${colNumberToLetter(COL.ADDL)}`, oldValue: 'BD row', newValue: 'Japan SL ' + (jp.serial || '?') }],
     });
   }
   const duplicateCars: any[] = [];  // duplicate Japan listings (dropped, noted on BD chassis)
@@ -633,7 +652,7 @@ export async function combineStocks(
       carName: rawc(b, COL.NAME) || b.name,
       changes: [{
         field: `Duplicate Japan listing (${d.how} match) — kept once, verify`,
-        colName: 'J note',
+        colName: `${colNumberToLetter(COL.CHASSIS)} note`,
         oldValue: `Japan ${d.jp.sec} SL ${d.jp.serial || '?'} — ${d.jp.name}`,
         newValue: 'dropped from combined sheet',
       }],

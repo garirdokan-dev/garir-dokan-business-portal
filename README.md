@@ -224,5 +224,29 @@ flagged red for manual entry, and link text.
 - The design is applied as the last step (`pricing/stock/utils/sheetDesign.ts`), after the usual
   layout. The setting lives in `pricing/stock/utils/designSetting.ts` and the button and panel in
   `pricing/stock/components/DesignPicker.tsx`.
-- Fixed at the same time: the combined sheet's stock-out title is now merged across A–I like the
-  BD and Japan sheets. Unmerged, the centred title was cut off on the left ("ED STOCK OUT …").
+- Fixed at the same time: the combined sheet's stock-out title is now merged like the BD and
+  Japan sheets. Unmerged, the centred title was cut off on the left ("ED STOCK OUT …").
+
+## Column order of the stock workbooks (October 2026)
+
+BD Stock, Japan Stock and BD + Japan Combine write their columns in this order:
+
+`SL NO · CAR NAME · GRADE · YEAR · COLOR · POINT · MILEAGE · DESCRIPTION · CHASSIS ·
+PRICE (DOLLAR) · PRICE (BDT) · DUTY · DRIVER + CNF · ADDITIONAL COST · COSTING PRICE · PRICE ·
+LONG DESCRIPTION · LOCATION · STATUS · SUPPLIER · PICTURE(DRIVE LINK) · UPLOADED LINK · IMAGE ·
+SOURCE SHEET` (A–X). Japan has no IMAGE column, so it ends at W.
+
+- A master in the earlier order (PRICE in I, CHASSIS in J, costs in O–T) can still be uploaded:
+  every column is found by its header text, and the output always comes out in the new order.
+  Values, notes, links and each cell's look move with their column.
+- Formulas follow their cells: the Japan costing chain is now `K = J*127`, `O = SUM(K:M)`,
+  `P = SUM(O+N)` (PRICE (BDT), COSTING PRICE, PRICE).
+- The three title rows and the stock-out title are merged from A to the PRICE column (P), in both
+  designs.
+- A chassis cell that has lost its colour (for example after columns were moved by hand) is marked
+  blue — pending — like a newly added car. A coloured chassis keeps its colour.
+- The thin BD/Japan divider in the combined sheet is white in the Brand design too, so the
+  column grid lines no longer show through it.
+- Old notes are now removed completely when rows are rewritten; before, a cell that had a note in
+  the uploaded master could keep an empty note box.
+- The order is defined in `pricing/stock/utils/columnLayout.ts`.

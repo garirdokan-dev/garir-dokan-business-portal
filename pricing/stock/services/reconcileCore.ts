@@ -12,6 +12,7 @@ import type {
 import { readNotesFromXlsx, noteFor, type NoteMap } from '../utils/noteReader';
 import { applySheetLayout, carRowHeight } from '../utils/excelHelpers';
 import { applySheetDesign, type LaidRow, type SheetDesign } from '../utils/sheetDesign';
+import { columnMove, layoutHeaderAndTitle, moveFormula, outputPositions, type ColumnRole } from '../utils/columnLayout';
 import {
   COLORS,
   applyCellStyle,
@@ -62,7 +63,10 @@ export interface WorkflowConfig {
   labelDefaultText: string;
   outputFilenamePrefix: string;
 
+  /** Where each column is in the uploaded master, found from its header row. */
   resolveColumns: (customColMap: Record<string, number>) => ColMap;
+  /** The column order the output is written in. */
+  order: ColumnRole[];
   detectSourceHeader: (ws: any) => { headerRowIdx: number; sourceColMap: Record<string, number> };
   parseSourceRows: (ws: any, sourceColMap: Record<string, number>, headerRowIdx: number, ctx: CoreContext) => SourceRecord[];
 
@@ -206,7 +210,11 @@ export async function reconcileCore(
     );
   }
 
-  const COL = cfg.resolveColumns(customColMap);
+  // IN: where each column is in the uploaded master (either column order);
+  // COL: where it is written — the output always uses the new order
+  const IN = cfg.resolveColumns(customColMap);
+  const COL = outputPositions(cfg.order) as unknown as ColMap;
+  const MOVE = columnMove(IN as any, COL as any, cfg.order);
   const TOTAL_COLS = cfg.totalCols;
   const ctx: CoreContext = { COL, asOfDateStr, warnings };
 
@@ -306,22 +314,25 @@ export async function reconcileCore(
   };
 
   /* ---- read a data row into the model, capturing full per-cell style ---- */
-  const keyCol = cfg.keyCol(COL);
+  // a row is read from the master's columns and kept under the output's columns
+  const keyCol = cfg.keyCol(IN);
   const readSheetRow = (row: any, rowNum: number, section: 'IN_STOCK' | 'STOCK_OUT'): SheetRow => {
     const cells = new Map<number, CellData>();
     let keyVal = '', carNameVal = '', statusVal = '';
     for (let c = 1; c <= TOTAL_COLS; c++) {
+      const to = MOVE.get(c);
+      if (!to) continue;
       const cell = row.getCell(c);
       const ext = extractCellValue(cell);
       const style = cloneCellStyle(cell);
       if (c === keyCol) keyVal = normalizeKey(ext.value).toUpperCase();
-      if (c === COL.CAR_NAME) carNameVal = String(ext.value || '').trim();
-      if (c === COL.STATUS) statusVal = String(ext.value || '').trim();
-      cells.set(c, {
-        colIndex: c,
-        colLetter: colNumberToLetter(c),
+      if (c === IN.CAR_NAME) carNameVal = String(ext.value || '').trim();
+      if (c === IN.STATUS) statusVal = String(ext.value || '').trim();
+      cells.set(to, {
+        colIndex: to,
+        colLetter: colNumberToLetter(to),
         value: ext.value,
-        formula: ext.formula ? stripEquals(ext.formula) : undefined,
+        formula: ext.formula ? moveFormula(stripEquals(ext.formula), MOVE) : undefined,
         hyperlink: ext.hyperlink,
         hyperlinkText: ext.hyperlinkText,
         style,
@@ -688,6 +699,9 @@ export async function reconcileCore(
 
   /* ================= RENDER ================= */
 
+  // header in the new column order; title rows merged A … PRICE
+  layoutHeaderAndTitle(wsCustom, customHeaderRowIdx, IN as any, COL as any, cfg.order);
+
   // unmerge everything below the header
   const merges: string[] = ((wsCustom as any).model?.merges || []).slice();
   for (const m of merges) {
@@ -702,7 +716,8 @@ export async function reconcileCore(
   // hard-reset a physical cell to a clean slate (prevents stale style/value/note leakage)
   const resetCell = (cell: any) => {
     cell.value = null;
-    try { if (cell.note) cell.note = undefined as any; } catch { /* ignore */ }
+    // remove the note completely: assigning undefined leaves an empty note box behind
+    if ((cell as any)._comment) (cell as any)._comment = undefined;
     cell.style = {
       font: { ...DEFAULT_FONT },
       fill: { type: 'pattern', pattern: 'none' },
@@ -829,7 +844,7 @@ export async function reconcileCore(
   }
 
   // label row (merged A..span; fill only across the merge)
-  const labelSpan = Math.min(captured.labelSpan || 9, TOTAL_COLS);
+  const labelSpan = Math.min(COL.PRICE, TOTAL_COLS);   // merged A … PRICE, like the title rows
   laid.push({ row: currentRow, kind: 'stockOutTitle' });
   const labelRow = wsCustom.getRow(currentRow);
   labelRow.height = captured.labelHeight;

@@ -2,10 +2,12 @@ import type { FieldChange, NewCarRecord, ReconciliationSummary, SheetRow } from 
 import type { SheetDesign } from '../utils/sheetDesign';
 import {
   COLORS,
+  colNumberToLetter,
   extractCellValue,
   normalizeKey,
   parseDescription,
 } from '../utils/excelHelpers';
+import { JAPAN_ORDER, inputPositions } from '../utils/columnLayout';
 import {
   reconcileCore,
   cellFromTemplate,
@@ -16,31 +18,7 @@ import {
 } from './reconcileCore';
 
 function resolveColumns(m: Record<string, number>): ColMap {
-  return {
-    SL_NO: m['SL NO'] || 1,
-    CAR_NAME: m['CAR NAME'] || 2,
-    GRADE: m['GRADE'] || 3,
-    YEAR: m['YEAR'] || 4,
-    COLOR: m['COLOR'] || 5,
-    POINT: m['POINT'] || 6,
-    MILAGE: m['MILAGE'] || m['MILEAGE'] || 7,   // MILEAGE is how the Brand design spells it
-    DESCRIPTION: m['DESCRIPTION'] || 8,
-    PRICE: m['PRICE'] || 9,
-    CHASSIS: m['CHASSIS'] || 10,
-    LOCATION: m['LOCATION'] || 11,
-    STATUS: m['STATUS'] || 12,
-    SUPPLIER: m['SUPPLIRE'] || m['SUPPLIER'] || 13,
-    LONG_DESCRIPTION: m['LONG DESCRIPTION'] || 14,
-    COSTING_PRICE: m['COSTING PRICE'] || 15,
-    PRICE_DOLLAR: m['PRICE (DOLLAR)'] || 16,
-    PRICE_BDT: m['PRICE (BDT)'] || 17,
-    DUTY: m['DUTY'] || 18,
-    DRIVER_CNF: m['DRIVER + CNF'] || 19,
-    ADDITIONAL_COST: m['ADDITIONAL COST'] || 20,
-    PICTURE_DRIVE: m['PICTURE(DRIVE LINK)'] || 21,
-    UPLOADED_LINK: m['UPLOADED LINK'] || 22,
-    SOURCE_SHEET: m['SOURCE SHEET'] || 23,
-  };
+  return inputPositions(m, 'JAPAN') as unknown as ColMap;   // either column order, by header text
 }
 
 function detectSourceHeader(ws: any): { headerRowIdx: number; sourceColMap: Record<string, number> } {
@@ -133,9 +111,15 @@ function parseSourceRows(ws: any, m: Record<string, number>, headerRowIdx: numbe
   return rows;
 }
 
-const FORMULA_Q = 'P{r}*127';
-const FORMULA_O = 'SUM(Q{r}:S{r})';
-const FORMULA_I = 'SUM(O{r}+T{r})';
+/** The derived costing chain, written with the output's column letters ({r} = the row). */
+const costingChain = (COL: ColMap) => {
+  const L = colNumberToLetter;
+  return {
+    bdt: `${L(COL.PRICE_DOLLAR)}{r}*127`,                                 // PRICE (BDT) = PRICE (DOLLAR) × 127
+    costing: `SUM(${L(COL.PRICE_BDT)}{r}:${L(COL.DRIVER_CNF)}{r})`,       // COSTING = BDT + DUTY + DRIVER + CNF
+    price: `SUM(${L(COL.COSTING_PRICE)}{r}+${L(COL.ADDITIONAL_COST)}{r})`, // PRICE = COSTING + ADDITIONAL COST
+  };
+};
 
 function refreshMatched(row: SheetRow, src: SourceRecord, ctx: CoreContext): FieldChange[] {
   const { COL, asOfDateStr } = ctx;
@@ -159,15 +143,17 @@ function refreshMatched(row: SheetRow, src: SourceRecord, ctx: CoreContext): Fie
     }
   };
 
-  updateWithNote(COL.PRICE_DOLLAR, 'PRICE (DOLLAR)', 'P', src.priceUSD);
-  updateWithNote(COL.DUTY, 'DUTY', 'R', src.duty);
-  updateWithNote(COL.DRIVER_CNF, 'DRIVER + CNF', 'S', src.driverCnf);
-  updateWithNote(COL.ADDITIONAL_COST, 'ADDITIONAL COST', 'T', src.additionalCost);
+  const L = colNumberToLetter;
+  updateWithNote(COL.PRICE_DOLLAR, 'PRICE (DOLLAR)', L(COL.PRICE_DOLLAR), src.priceUSD);
+  updateWithNote(COL.DUTY, 'DUTY', L(COL.DUTY), src.duty);
+  updateWithNote(COL.DRIVER_CNF, 'DRIVER + CNF', L(COL.DRIVER_CNF), src.driverCnf);
+  updateWithNote(COL.ADDITIONAL_COST, 'ADDITIONAL COST', L(COL.ADDITIONAL_COST), src.additionalCost);
 
   // Always rebuild the derived formula chain at the row's final position.
-  const q = row.cells.get(COL.PRICE_BDT); if (q) { q.formula = FORMULA_Q; q.value = null; }
-  const o = row.cells.get(COL.COSTING_PRICE); if (o) { o.formula = FORMULA_O; o.value = null; }
-  const i = row.cells.get(COL.PRICE); if (i) { i.formula = FORMULA_I; i.value = null; }
+  const f = costingChain(COL);
+  const q = row.cells.get(COL.PRICE_BDT); if (q) { q.formula = f.bdt; q.value = null; }
+  const o = row.cells.get(COL.COSTING_PRICE); if (o) { o.formula = f.costing; o.value = null; }
+  const i = row.cells.get(COL.PRICE); if (i) { i.formula = f.price; i.value = null; }
 
   return changes;
 }
@@ -203,9 +189,10 @@ function buildNewRow(src: SourceRecord, template: SheetRow, ctx: CoreContext): {
   set(COL.SOURCE_SHEET, `RAITA INTERNATIONAL LIST (${asOfDateStr})`);
 
   // derived formula chain
-  cells.get(COL.PRICE_BDT)!.formula = FORMULA_Q; cells.get(COL.PRICE_BDT)!.value = null;
-  cells.get(COL.COSTING_PRICE)!.formula = FORMULA_O; cells.get(COL.COSTING_PRICE)!.value = null;
-  cells.get(COL.PRICE)!.formula = FORMULA_I; cells.get(COL.PRICE)!.value = null;
+  const f = costingChain(COL);
+  cells.get(COL.PRICE_BDT)!.formula = f.bdt; cells.get(COL.PRICE_BDT)!.value = null;
+  cells.get(COL.COSTING_PRICE)!.formula = f.costing; cells.get(COL.COSTING_PRICE)!.value = null;
+  cells.get(COL.PRICE)!.formula = f.price; cells.get(COL.PRICE)!.value = null;
 
   // chassis blank -> BLUE (pending; RAITA source never carries chassis)
   const chassisCell = cells.get(COL.CHASSIS)!;
@@ -311,6 +298,7 @@ export async function reconcileJapanStock(
       'Car List',
     ],
     totalCols: 23,
+    order: JAPAN_ORDER,
     keyCol: (COL) => COL.SL_NO,
     labelDefaultText: "JAPAN STOCK OUT LISTING CAR'S",
     outputFilenamePrefix: 'Japan_Customized_Sheet',
