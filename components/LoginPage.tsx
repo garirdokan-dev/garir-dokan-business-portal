@@ -483,8 +483,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             </div>
           </div>
 
-          <h1 className="text-4xl font-black tracking-tight text-white uppercase font-sans flex items-center gap-1">
-            GARIR <span className="text-red-700 text-shadow-red relative font-extrabold">DOKAN
+          <h1 className="text-4xl font-black tracking-tight text-white text-white-always uppercase font-sans flex items-center gap-1">
+            <span className="text-white text-white-always">GARIR</span> <span className="text-red-700 text-shadow-red relative font-extrabold">DOKAN
               <span className="absolute left-0 right-0 bottom-1 h-[2px] bg-red-600/30 w-full rounded" />
             </span>
           </h1>
@@ -558,7 +558,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               <div className="w-20 h-20 bg-red-950/30 border border-red-500/60 rounded-full flex items-center justify-center text-red-500 animate-pulse mb-4 shadow-[0_0_40px_rgba(239,68,68,0.35)]">
                 <ShieldCheck className="w-10 h-10 text-red-500" />
               </div>
-              <h2 className="text-lg font-black uppercase tracking-[0.45em] text-white">
+              <h2 className="text-lg font-black uppercase tracking-[0.45em] text-white text-white-always">
                 Access Granted
               </h2>
               <div className="w-48 h-[2px] bg-red-950/80 rounded-full mt-4 overflow-hidden relative">
@@ -727,7 +727,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 <button
                   type="submit"
                   disabled={isLoading || isSuccess}
-                  className={`flex-1 relative py-4 rounded-xl font-black text-xs uppercase tracking-[0.3em] text-white flex items-center justify-center gap-2 shadow-2xl transition-all duration-300 overflow-hidden group/btn ${
+                  className={`flex-1 relative py-4 rounded-xl font-black text-xs uppercase tracking-[0.3em] text-white text-white-always flex items-center justify-center gap-2 shadow-2xl transition-all duration-300 overflow-hidden group/btn ${
                     isLoading 
                       ? 'bg-red-850/60 cursor-not-allowed shadow-none' 
                       : 'bg-red-700 hover:bg-gradient-to-r hover:from-red-800 hover:to-red-650 active:scale-97 shadow-red-700/10 hover:shadow-red-700/25'
@@ -738,11 +738,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   {isLoading ? (
                     <>
                       <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                      <span>Verifying...</span>
+                      <span className="text-white text-white-always">Verifying...</span>
                     </>
                   ) : (
                     <>
-                      <span>Initialize Connection</span>
+                      <span className="text-white text-white-always">Initialize Connection</span>
                       <ChevronRight className="w-4 h-4 transform group-hover/btn:translate-x-1 transition-transform" />
                     </>
                   )}
@@ -817,6 +817,11 @@ const styleBlock = (
 
     .text-shadow-red {
       text-shadow: 0 0 20px rgba(220, 38, 38, 0.7);
+    }
+
+    html.light-mode .text-white-always,
+    .text-white-always {
+      color: #ffffff !important;
     }
 
     /* Interactive highway laser lanes at the bottom */
